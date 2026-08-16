@@ -1,0 +1,9 @@
+# 백업 / 임시 파일
+*.bak
+*.bak.*
+*~
+*.swp
+*.tmp
+
+# OS
+.DS_Store
