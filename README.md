@@ -131,6 +131,19 @@ setup-korean.sh — Omarchy 한글 입력(fcitx5 + hangul) 세팅
 [+] 바인딩: 이미 래퍼로 재설정됨 — 건너뜀
 ```
 
+이미 세팅된 머신에서 `--light` 를 돌리면 이렇게 끝난다 (실제 출력).
+설정 파일은 건드리지 않으므로 백업도 새로 생기지 않고, fcitx5 재시작도 하지 않는다.
+
+```
+$ ./setup-korean.sh --light
+[+] kb_options: input.lua 에 이미 korean:ralt_hangul — 건너뜀
+[+] fcitx5 config: 이미 정리됨 — 재시작 불필요
+[+] Hyprland reload
+[+] configerrors: 없음
+
+[+] 완료. 오른쪽 Alt 로 한/영 전환하세요. (이미 열린 창은 재실행 필요할 수 있음)
+```
+
 ---
 
 ## 실행 후
