@@ -21,6 +21,8 @@
 ## 요구 사항
 
 - Omarchy (또는 Arch 계열 + Hyprland)
+- **Hyprland 0.55 이상** — Lua 설정(`.lua`)이 0.55 에서 도입됐다. 그 미만이면 hypr 관련
+  단계(6, 8)만 안내와 함께 건너뛰고 fcitx5 설정은 그대로 진행한다
 - `bash`, `git`
 - 패키지 설치 단계에서 `omarchy` 또는 `pacman` — 없으면 그 단계만 건너뛰고 계속 진행한다
 - `--full` 모드는 `sudo` 가 필요할 수 있다 (`pacman -S` 경로일 때)
@@ -32,21 +34,21 @@
 
 ## 설치
 
+여러 스크립트를 한 번에 돌리려면 [`install.sh`](install.md) 를 쓰면 된다. 이 스크립트만
+쓰려면 아래처럼 한다.
+
 ### 1. clone 해서 실행 (권장)
 
 ```bash
 git clone https://github.com/minsoft1115/omarchy-setup.git
 cd omarchy-setup
-./setup-korean.sh
+./scripts/setup-korean.sh
 ```
 
-### 2. 스크립트 하나만 받아서 실행
+### 2. 스크립트만 받아서 실행 — 이제 안 된다
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/minsoft1115/omarchy-setup/main/setup-korean.sh -o setup-korean.sh
-less setup-korean.sh          # 실행 전에 한 번 읽어볼 것
-bash setup-korean.sh
-```
+Hyprland 설정을 `hypr/` 폴더의 Lua 조각으로 넣기 때문에 **저장소가 함께 있어야 한다.**
+스크립트 하나만 받으면 조각을 못 찾고 그 단계를 건너뛴다.
 
 > 파이프로 바로 실행(`curl ... | bash`)하는 방법은 일부러 적지 않았다.
 > 이 스크립트는 `~/.config/hypr`, `~/.config/fcitx5` 를 수정하고 sudo 를 쓸 수 있으므로
@@ -57,13 +59,14 @@ bash setup-korean.sh
 ## 사용법
 
 ```
-$ ./setup-korean.sh --help
+$ ./scripts/setup-korean.sh --help
 setup-korean.sh — Omarchy 한글 입력(fcitx5 + hangul) 세팅
 ==============================================================================
 사용법:
-  ./setup-korean.sh            전체 세팅 (갓 설치한 머신용, 패키지 설치 포함)
-  ./setup-korean.sh --light    가벼운 재적용 (패키지/sudo 없이 키 설정만)
-  ./setup-korean.sh --help     도움말
+  ./scripts/setup-korean.sh            전체 세팅 (갓 설치한 머신용, 패키지 설치 포함)
+  ./scripts/setup-korean.sh --light    가벼운 재적용 (패키지/sudo 없이 키 설정만)
+  ./scripts/setup-korean.sh remove     되돌리기 (이 스크립트가 만든 것만)
+  ./scripts/setup-korean.sh --help     도움말
 
 모두 idempotent — 여러 번 실행해도 안전하며, 이미 된 항목은 "건너뜀" 으로 표시.
 ==============================================================================
@@ -76,7 +79,7 @@ setup-korean.sh — Omarchy 한글 입력(fcitx5 + hangul) 세팅
 3. XDG 자동시작 중복 방지 → `~/.config/autostart/org.fcitx.Fcitx5.desktop`
 4. fcitx5 프로필 (keyboard-us + hangul, 기본 IM=hangul)
 5. fcitx5 단축키 — `Control+space` 제거, `Hangul` 유지
-6. 오른쪽 Alt = 한/영 (`kb_options` 에 `korean:ralt_hangul` 추가)
+6. 오른쪽 Alt = 한/영 (`input.lua` 의 `kb_options` 에 `korean:ralt_hangul` 추가)
 7. 영문-우선 실행 래퍼 → `~/.local/bin/omarchy-latin-launch`
 8. `Super+Space` / `Super+Alt+Space` 재바인딩 (메뉴를 영문으로 열기)
 9. 적용 (Hyprland reload / fcitx5 재시작)
@@ -131,7 +134,7 @@ setup-korean.sh — Omarchy 한글 입력(fcitx5 + hangul) 세팅
 설정 파일은 건드리지 않으므로 백업도 새로 생기지 않고, fcitx5 재시작도 하지 않는다.
 
 ```
-$ ./setup-korean.sh --light
+$ ./scripts/setup-korean.sh --light
 [+] kb_options: input.lua 에 이미 korean:ralt_hangul — 건너뜀
 [+] fcitx5 config: 이미 정리됨 — 재시작 불필요
 [+] Hyprland reload
@@ -160,8 +163,9 @@ $ ./setup-korean.sh --light
 | `~/.config/fcitx5/profile` | keyboard-us + hangul 그룹 |
 | `~/.config/environment.d/fcitx.conf` | `INPUT_METHOD`, `QT_IM_MODULE`, `XMODIFIERS`, `SDL_IM_MODULE` |
 | `~/.config/autostart/org.fcitx.Fcitx5.desktop` | `Hidden=true` (중복 실행 방지) |
-| `~/.config/hypr/input.lua` 또는 `input.conf` | `kb_options` 에 `korean:ralt_hangul` |
-| `~/.config/hypr/bindings.lua` 또는 `bindings.conf` | SPACE 계열 바인딩 재설정 |
+| `~/.config/hypr/hyprland.lua` | 마커로 감싼 `require` 줄 2개 (**Omarchy 파일 중 손대는 유일한 곳**) |
+| `~/.config/minsoft1115/hypr/korean-input.lua` | `kb_options` 에 `korean:ralt_hangul` (저장소에서 복사) |
+| `~/.config/minsoft1115/hypr/korean-bindings.lua` | SPACE 계열 바인딩 재설정 (템플릿에서 생성) |
 | `~/.local/bin/omarchy-latin-launch` | 영문-우선 실행 래퍼 (신규 생성) |
 
 기존 파일은 수정 전에 `*.bak.<타임스탬프>` 로 백업된다. 되돌리려면 백업을 덮어쓰면 된다.
@@ -170,7 +174,46 @@ $ ./setup-korean.sh --light
 ls ~/.config/hypr/*.bak.*  ~/.config/fcitx5/*.bak.*
 ```
 
-Hyprland 설정은 신형(`.lua`) / 구형(`.conf`) 을 모두 지원하며, 있는 쪽을 자동 판별한다.
+### Hyprland 설정을 넣는 방식
+
+`input.lua` · `bindings.lua` 를 직접 고치지 않는다. 저장소의 Lua 조각을
+`~/.config/minsoft1115/hypr/` 로 복사하고, `hyprland.lua` 끝에 이 블록만 넣는다.
+
+```lua
+-- setup-korean:begin
+require("minsoft1115.hypr.korean-input")
+require("minsoft1115.hypr.korean-bindings")
+-- setup-korean:end
+```
+
+`~/.config` 가 Hyprland 의 Lua `package.path` 에 있어서 점 표기 모듈명이 그대로 해석된다.
+Omarchy 기본값 뒤에 로드되므로 여기 정의가 이긴다. 되돌리려면 **마커 사이만 지우면** 된다.
+
+`korean-input.lua` 는 설치 시점 값을 박아 두지 않고 로드될 때
+`hl.get_config("input.kb_options")` 로 현재 값을 읽어 옵션을 덧붙인다. 그래서 Omarchy 가
+나중에 기본 `kb_options` 를 바꿔도 따라가고, 낡은 값이 설정 파일에 남지 않는다.
+
+`korean-bindings.lua` 만 정적 복사가 아니라 **생성**이다 — 키에 걸린 실제 명령이 Omarchy
+버전마다 달라서, 스크립트가 기본 바인딩에서 읽어 템플릿(`hypr/korean-bindings.lua.in`)의
+자리표시자를 채운다.
+
+예전 버전이 `input.lua` · `bindings.lua` 에 직접 덧붙여 둔 블록이 있으면 **위치만 알려 준다.**
+마커 없이 append 된 것이라 자동으로 지우면 직접 쓴 줄까지 건드릴 수 있어서다. 남아 있어도
+동작에는 문제가 없다.
+
+Hyprland 설정은 **Lua(`.lua`) 형식만** 다룬다. 구형 `hyprland.conf` 방식은 지원하지 않는다.
+
+실행 시 `hyprctl version` 으로 버전을 확인해서, `0.55` 미만이면 이렇게 알리고 hypr 단계만 건너뛴다.
+
+```
+[!] Hyprland 0.54.0 — Lua 설정은 0.55.0 이상에서만 쓸 수 있다 (이 버전은 hyprland.conf 방식).
+[!]   → Hyprland 를 올린 뒤(omarchy update) 다시 실행하거나,
+[!]     input.conf 에 'kb_options = ...,korean:ralt_hangul' 을 직접 넣어야 한다.
+[!]   fcitx5 설정은 그대로 진행한다.
+```
+
+버전을 못 읽으면(Hyprland 세션 밖) 경고만 하고 Lua 기준으로 계속 진행한다.
+대상 파일이 없을 때도 그 단계만 건너뛴다.
 
 ---
 
@@ -179,11 +222,11 @@ Hyprland 설정은 신형(`.lua`) / 구형(`.conf`) 을 모두 지원하며, 있
 기본 경로가 다른 환경이라면 실행 시 덮어쓸 수 있다.
 
 ```bash
-FCITX_DIR=~/dotfiles/fcitx5 HYPR_BIND_LUA=~/dotfiles/hypr/bindings.lua ./setup-korean.sh --light
+FCITX_DIR=~/dotfiles/fcitx5 FRAG_DIR=~/dotfiles/minsoft1115/hypr ./scripts/setup-korean.sh --light
 ```
 
-지원 변수: `FCITX_DIR`, `FCITX_CONF`, `FCITX_PROFILE`, `HYPR_INPUT`, `HYPR_INPUT_LUA`,
-`HYPR_BIND`, `HYPR_BIND_LUA`, `OMARCHY_DEFAULTS`, `KB_OPTIONS_FALLBACK`, `LATIN_WRAPPER`, `TS`
+지원 변수: `FCITX_DIR`, `FCITX_CONF`, `FCITX_PROFILE`, `FRAG_SRC`, `FRAG_DIR`,
+`HYPR_MAIN_LUA`, `OMARCHY_DEFAULTS`, `HYPR_LUA_MIN`, `KB_OPTIONS_FALLBACK`, `LATIN_WRAPPER`, `TS`
 
 ---
 
@@ -191,7 +234,7 @@ FCITX_DIR=~/dotfiles/fcitx5 HYPR_BIND_LUA=~/dotfiles/hypr/bindings.lua ./setup-k
 
 **오른쪽 Alt 가 안 먹는다**
 `kb_options` 에 `grp:alts_toggle` 이 함께 있으면 충돌한다 (비라틴 레이아웃일 때 Omarchy 가 넣는다).
-스크립트가 경고를 띄우며, 해당 항목을 `input.lua` / `input.conf` 에서 제거해야 한다.
+스크립트가 경고를 띄우며, 해당 항목을 `input.lua` 에서 제거해야 한다.
 
 ```bash
 hyprctl getoption input:kb_options
@@ -213,9 +256,20 @@ command -v omarchy-latin-launch    # ~/.local/bin/omarchy-latin-launch 가 나�
 ```
 
 **설정을 되돌리고 싶다**
-백업 파일을 복원한 뒤 리로드한다.
 
 ```bash
-cp ~/.config/hypr/input.lua.bak.<타임스탬프> ~/.config/hypr/input.lua
-hyprctl reload
+./scripts/setup-korean.sh remove
 ```
+
+이 스크립트가 **만든 것만** 지운다 — `hyprland.lua` 의 마커 블록, `~/.config/minsoft1115/hypr`
+의 조각, 영문-우선 래퍼, IM 환경변수 파일, XDG 자동시작 억제 파일.
+
+**fcitx5 의 `config`·`profile` 은 건드리지 않는다.** 우리가 만든 게 아니라 고친 파일이고,
+되돌리면 한글 입력 자체가 사라질 수 있어서다. 백업 위치만 알려 준다. TriggerKeys 와 프로필까지
+가장 최근 백업으로 되돌리려면:
+
+```bash
+./scripts/setup-korean.sh remove --fcitx
+```
+
+설치한 패키지는 어느 쪽이든 그대로 둔다.

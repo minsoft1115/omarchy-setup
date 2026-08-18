@@ -290,7 +290,7 @@ omarchy bar move omarchy.workspaces --section right
 ### (b) 표시 규칙 바꾸기 — 위젯 복제 필요
 
 이 저장소가 복제본을 하나 들고 있다. 소스는 저장소 안에 있고,
-[`install-workspaces-widget.sh`](../install-workspaces-widget.sh) 가 그걸 현재 OS 에 설치한다.
+[`install-workspaces-widget.sh`](../scripts/install-workspaces-widget.sh) 가 그걸 현재 OS 에 설치한다.
 
 ```
 소스(편집 대상)  ./minsoft1115.workspaces/                       ← git 로 관리
@@ -298,10 +298,10 @@ omarchy bar move omarchy.workspaces --section right
 ```
 
 ```bash
-./install-workspaces-widget.sh install   # 소스를 설치하고 바에 적용
-./install-workspaces-widget.sh revert    # Omarchy 기본 위젯으로 원복
-./install-workspaces-widget.sh status    # 지금 어느 쪽을 쓰는지
-./install-workspaces-widget.sh diff      # 소스 vs 설치본, 소스 vs 원본
+./scripts/install-workspaces-widget.sh install   # 소스를 설치하고 바에 적용
+./scripts/install-workspaces-widget.sh revert    # Omarchy 기본 위젯으로 원복
+./scripts/install-workspaces-widget.sh status    # 지금 어느 쪽을 쓰는지
+./scripts/install-workspaces-widget.sh diff      # 소스 vs 설치본, 소스 vs 원본
 ```
 
 위젯을 고쳤으면 `install` 을 다시 돌리면 된다.

@@ -23,6 +23,9 @@ Super 를 누르고 있으면 각 워크스페이스에 뭐가 떠 있는지 보
 
 ### Super 홀드 미리보기
 
+**어느 워크스페이스로 갈지 정하기 전에 거기 뭐가 떠 있는지 보는 것**이 목적이다. 바는 번호만
+보여 주므로 "브라우저가 2번이었나 3번이었나" 를 기억에 의존하게 되는데, 그걸 없앤다.
+
 **Super 를 0.25초 이상 누르고 있으면** 팝업이 뜨고, 떼면 닫힌다.
 
 ```
@@ -50,12 +53,14 @@ Super 를 누르고 있으면 각 워크스페이스에 뭐가 떠 있는지 보
 
 ## 사용법
 
+여러 스크립트를 한 번에 돌리려면 [`install.sh`](install.md) 를 쓴다.
+
 ```bash
-./install-workspaces-widget.sh status     # 지금 어느 위젯을 쓰는지 (기본 동작)
-./install-workspaces-widget.sh install    # 저장소 → OS 설치 + 바에 적용 + 키 바인딩
-./install-workspaces-widget.sh revert     # Omarchy 기본 위젯으로 원복
-./install-workspaces-widget.sh remove     # 원복 + 설치본 삭제
-./install-workspaces-widget.sh diff       # 소스 vs 설치본, 소스 vs Omarchy 원본
+./scripts/install-workspaces-widget.sh status     # 지금 어느 위젯을 쓰는지 (기본 동작)
+./scripts/install-workspaces-widget.sh install    # 저장소 → OS 설치 + 바에 적용 + 키 바인딩
+./scripts/install-workspaces-widget.sh revert     # Omarchy 기본 위젯으로 원복
+./scripts/install-workspaces-widget.sh remove     # 원복 + 설치본 삭제
+./scripts/install-workspaces-widget.sh diff       # 소스 vs 설치본, 소스 vs Omarchy 원본
 ```
 
 옵션:
@@ -82,7 +87,7 @@ Hyprland binding   : installed, required by hyprland.lua, Super_L bound
 ## 구성
 
 ```
-minsoft1115.workspaces/     Quickshell 플러그인 (바 위젯 + 셸 서비스)
+minsoft1115.workspaces/     Quickshell 플러그인 (바 위젯 + 셸 서비스)   ← 저장소 루트
 ├── manifest.json           kinds: ["bar-widget", "service"]
 ├── Workspaces.qml          바 위젯 — 숫자 렌더 + 팝업 소유
 ├── PeekService.qml         셸 서비스 — 단축키 등록 + 팝업 제어
@@ -96,10 +101,15 @@ hypr/workspace-peek.lua     Hyprland 키 바인딩 + 키 조합 감지 훅
 | 소스 | 설치 위치 |
 |---|---|
 | `minsoft1115.workspaces/` | `~/.config/omarchy/plugins/minsoft1115.workspaces/` |
-| `hypr/workspace-peek.lua` | `~/.config/hypr/workspace-peek.lua` + `hyprland.lua` 에 require 한 줄 |
+| `hypr/workspace-peek.lua` | `~/.config/minsoft1115/hypr/workspace-peek.lua` + `hyprland.lua` 에 require 한 줄 |
 
 심볼릭 링크가 아니라 복사인 이유는 Omarchy 의 플러그인 감시자(`inotifywait -r`)가
 링크를 따라가지 않아서다 — 링크로 걸면 편집이 셸에 전달되지 않는다.
+
+Lua 조각을 `~/.config/hypr/` 가 아니라 별도 네임스페이스에 두는 이유는, Omarchy 가 들고
+관리하는 파일들 사이에 우리 것을 섞지 않기 위해서다. `~/.config` 가 Hyprland 의 Lua
+`package.path` 에 들어 있어서 `require("minsoft1115.hypr.workspace-peek")` 가 그대로 잡힌다.
+**손대는 Omarchy 파일은 `hyprland.lua` 한 곳뿐이다.**
 
 ---
 
