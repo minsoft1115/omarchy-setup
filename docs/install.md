@@ -54,8 +54,22 @@ What should be set up? (space toggles, enter confirms)
   | `up to date` | 저장소와 같음 | — |
 
   전부 `up to date` 면 헤더가 `Everything is up to date — pick anything to re-apply` 로 바뀐다.
-  판정은 저장소 파일과 설치본을 **직접 비교**한다. 각 스크립트의 `status` 출력을 파싱하지
-  않는다 — 메뉴에 한 단어 띄우자고 남의 문구에 묶일 이유가 없다.
+
+  판정은 저장소 파일과 설치본을 **바이트 단위로 비교**한다. 각 스크립트의 `status` 출력을
+  파싱하지 않는다 — 메뉴에 한 단어 띄우자고 남의 문구에 묶일 이유가 없다.
+
+  | 스텝 | 설치 여부 판단 | 최신 여부 비교 대상 |
+  |---|---|---|
+  | `korean` | 조각 파일 + `hyprland.lua` 의 마커 | `hypr/korean-input.lua` |
+  | `bash-config` | `~/.bashrc` 의 마커 | `bash/*.sh` 전부 (설치본에 없는 파일도 차이로 본다) |
+  | `workspaces` | 플러그인 `manifest.json` | 플러그인 폴더 전체 + `hypr/workspace-peek.lua` |
+  | `pkg-guards` | 설치본에 파일 존재 | `bash/pkg-guards.sh` |
+
+  `korean-bindings.lua` 는 머신마다 생성되는 파일이라 비교에서 뺀다 — 명령 문자열이 Omarchy
+  기본값에서 나오므로 저장소 쪽에 대응하는 원본이 없다. 스텝을 다시 돌리면 어차피 다시 만든다.
+
+  선택 파일이 빠져 있는 것은 **차이가 아니라 선택**이라, `bash-config` 는 `pkg-guards.sh` 가
+  없다고 `needs update` 가 되지 않는다.
 
 - **`pkg-guards` 는 bash 항목의 하위 토글**로 같이 뜬다. 이건 "할 일" 이 아니라 **원하는
   상태**라, 설치돼 있으면 체크된 채로 시작한다. 체크하고 진행하면 `--with-optional`,

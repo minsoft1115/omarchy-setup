@@ -37,7 +37,7 @@ bash install.sh
 **터미널을 다시 붙여** 자기 자신을 그 clone 에서 실행한다 — 파이프로 들어온 스크립트는
 stdin 이 키보드가 아니라서 체크리스트가 그대로 EOF 를 읽고 아무것도 선택되지 않는다.
 
-그다음 `gum` 체크리스트가 뜬다 (**전부 선택된 상태**로 시작, 스페이스로 토글):
+그다음 `gum` 체크리스트가 뜬다 (스페이스로 토글, Enter 로 확정):
 
 ```
 What should be set up? (space toggles, enter confirms)
@@ -47,12 +47,21 @@ What should be set up? (space toggles, enter confirms)
   [✓] [not installed]  Workspaces bar — hold Super to see which apps are where before switching
 ```
 
-- 상태가 **세 가지**다: `not installed` / `needs update`(저장소가 앞서 있음) / `up to date`.
-  **할 일이 있는 것만 기본 선택**된다 — 이미 최신인 걸 다시 돌릴 이유가 없다
-- `pkg-guards` 는 bash 항목의 **하위 토글**이다. 체크 = "이 파일을 원한다" 라서, 설치돼 있으면
-  체크된 상태로 시작한다 (해제하고 진행하면 회수된다)
-- 고른 순서와 무관하게 **실행 순서는 고정**이다 (한글 → bash → 위젯). 위젯이 셸을 재시작하므로 마지막
-- `pkg-guards` 설치 여부도 **여기서 미리 물어** 하위 스크립트가 도중에 멈추지 않는다
+- 상태가 **세 가지**다. 저장소 파일과 설치본을 **바이트 단위로 비교**해서 판정한다 —
+  `git pull` 로 저장소가 앞섰거나 소스를 직접 고쳤으면 `needs update` 가 된다
+
+  | 상태 | 뜻 | 기본 선택 |
+  |---|---|---|
+  | `not installed` | 설치된 적 없음 | ✓ |
+  | `needs update` | 설치본이 저장소와 다름 | ✓ |
+  | `up to date` | 저장소와 같음 | — |
+
+  **할 일이 있는 것만 기본 선택**된다. 이미 최신인 걸 다시 돌릴 이유가 없다
+- `pkg-guards` 는 bash 항목의 **하위 토글**이라 규칙이 다르다. 체크 = "이 파일을 원한다" 라서
+  **설치돼 있으면 체크된 채로**, **설치돼 있지 않으면 체크 없이** 시작한다 (기본은 설치 안 함).
+  체크된 채로 진행하면 설치·갱신되고, 해제하고 진행하면 회수된다
+- 고른 순서와 무관하게 **실행 순서는 고정**이다 (`korean` → `bash-config` → `workspaces`).
+  워크스페이스 위젯이 셸을 재시작하므로 마지막이다
 - 하나가 실패해도 나머지는 계속하고, 끝에 요약이 나온다
 
 **clone 은 지우지 않는다.** 세 스크립트 모두 저장소에서 설치하고(alias·위젯 소스·Hyprland 조각),
@@ -75,6 +84,20 @@ What should be set up? (space toggles, enter confirms)
 
 ---
 
+# 개별 스크립트
+
+`install.sh` 없이 하나만 돌려도 된다. 전부 저장소 안에서 실행한다 — 소스(`bash/`, `hypr/`,
+`minsoft1115.workspaces/`)를 읽어 설치하기 때문이다.
+
+```bash
+git clone https://github.com/minsoft1115/omarchy-setup.git
+cd omarchy-setup
+```
+
+`install.sh` 를 이미 한 번 돌렸다면 clone 이 `~/.local/share/minsoft1115/omarchy-setup` 에 있다.
+
+---
+
 ## setup-korean.sh
 
 fcitx5 + hangul 을 설치·설정해서 한글 입력을 쓸 수 있게 만든다.
@@ -82,8 +105,6 @@ fcitx5 + hangul 을 설치·설정해서 한글 입력을 쓸 수 있게 만든�
 Super+Space 메뉴가 항상 영문으로 열리게 한다.
 
 ```bash
-git clone https://github.com/minsoft1115/omarchy-setup.git
-cd omarchy-setup
 ./scripts/setup-korean.sh
 ```
 
@@ -103,35 +124,6 @@ Hyprland 설정은 **원본 파일을 고치지 않는다.** Lua 조각을 `~/.c
 두고, `hyprland.lua` 에 마커로 감싼 `require` 줄만 넣는다 (`install-workspaces-widget.sh` 와 같은 방식).
 
 자세한 내용은 [docs/setup-korean.md](docs/setup-korean.md) 참고.
-
----
-
-## install-workspaces-widget.sh
-
-**어느 워크스페이스로 갈지 정하기 전에, 거기 뭐가 떠 있는지 먼저 보는 것**이 목적이다.
-Super 를 누르고 있으면 창이 있는 워크스페이스와 그 창 목록이 뜬다. 번호만 보고 기억에 의존해
-왔다 갔다 하던 걸 없앤다. 덤으로 포커스된 워크스페이스도 글리프 대신 **숫자 그대로** 둔다.
-
-![워크스페이스 위젯과 Super 홀드 미리보기](screenshots/workspaces-widget.png)
-
-바에서 1번은 포커스(반전된 숫자), 2번은 창 있음, 3~5번은 비어 있어 흐리게 나온다.
-Super 를 누르고 있으면 아래 팝업이 떠서 각 워크스페이스의 창 목록을 보여 준다.
-
-저장소를 clone 한 뒤 실행한다 (Quickshell 플러그인과 Hyprland 키 바인딩을 함께 설치한다):
-
-```bash
-git clone https://github.com/minsoft1115/omarchy-setup.git
-cd omarchy-setup
-./scripts/install-workspaces-widget.sh install
-```
-
-되돌리려면:
-
-```bash
-./scripts/install-workspaces-widget.sh revert
-```
-
-자세한 내용은 [docs/workspaces-widget.md](docs/workspaces-widget.md) 참고.
 
 ---
 
@@ -175,6 +167,33 @@ source ./scripts/install-bash-config.sh install
 ```
 
 자세한 내용은 [docs/bash-config.md](docs/bash-config.md) 참고.
+
+---
+
+## install-workspaces-widget.sh
+
+**어느 워크스페이스로 갈지 정하기 전에, 거기 뭐가 떠 있는지 먼저 보는 것**이 목적이다.
+Super 를 누르고 있으면 창이 있는 워크스페이스와 그 창 목록이 뜬다. 번호만 보고 기억에 의존해
+왔다 갔다 하던 걸 없앤다. 덤으로 포커스된 워크스페이스도 글리프 대신 **숫자 그대로** 둔다.
+
+![워크스페이스 위젯과 Super 홀드 미리보기](screenshots/workspaces-widget.png)
+
+바에서 1번은 포커스(반전된 숫자), 2번은 창 있음, 3~5번은 비어 있어 흐리게 나온다.
+Super 를 누르고 있으면 아래 팝업이 떠서 각 워크스페이스의 창 목록을 보여 준다.
+
+Quickshell 플러그인과 Hyprland 키 바인딩을 함께 설치한다.
+
+```bash
+./scripts/install-workspaces-widget.sh install
+```
+
+되돌리려면:
+
+```bash
+./scripts/install-workspaces-widget.sh revert
+```
+
+자세한 내용은 [docs/workspaces-widget.md](docs/workspaces-widget.md) 참고.
 
 ---
 
