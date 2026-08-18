@@ -1,4 +1,4 @@
-# 백업 / 임시 파일
+# Backups and temp files
 *.bak
 *.bak.*
 *~
