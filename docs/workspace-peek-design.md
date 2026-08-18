@@ -80,9 +80,14 @@ Super 누름
 
 Super 뗌
  └─ released → 타이머 취소 + 전부에 hidePeek()
+
+Super 홀드 중 다른 키가 내려옴
+ └─ Hyprland  hl.on("input.keyboard.key")
+     └─ hl.dsp.global("minsoft1115:workspace-peek-cancel")
+         └─ PeekService: dismiss() — 대기 중이면 예약 취소, 떠 있으면 닫기
 ```
 
-디바운스가 필요한 이유는 6장 참고.
+디바운스와 취소 경로가 왜 필요한지는 6장 참고.
 
 ---
 
@@ -199,6 +204,8 @@ hl.bind("Super_L",         peek, { non_consuming = true, description = "Peek at 
 hl.bind("SUPER + Super_L", peek, { non_consuming = true, release = true })
 ```
 
+실제 파일에는 이 두 바인딩 외에 **키 조합 감지 훅**이 더 있다 (6장).
+
 **처음 설계는 두 군데가 틀렸고, 실측으로 잡았다.**
 
 ### ① 키 문자열은 `"MOD + KEY"` 다
@@ -239,16 +246,61 @@ PRESSED  → show
          → RELEASED 없음        팝업이 열린 채 고착
 ```
 
-`released` 하나에만 의존하면 안 된다는 뜻이라, 닫기를 세 겹으로 만들었다.
+`released` 하나에만 의존하면 안 된다는 뜻이다. 닫기를 네 겹으로 만들었고,
+그중 하나가 **조건을 직접 관측**한다.
 
 | 방어선 | 역할 |
 |---|---|
-| 250ms 지연 | 가장 빠른 코드 차단. 이것만으로는 부족하다 (실측 간격 150~230ms) |
-| `onCompositorMoved` | 지연을 통과한 코드 → **대기 중이면 예약 취소, 떠 있으면 즉시 닫기** |
-| 5초 안전 타이머 | 위 둘이 놓친 것의 상한 |
+| 250ms 지연 | 가장 빠른 코드 차단 (실측 간격 150~230ms 라 이것만으로는 부족하다) |
+| **키 조합 감지** | Super 를 쥔 채 다른 키가 내려오면 즉시 취소 — **주 방어선** |
+| 컴포지터 이동 감지 | 워크스페이스·활성 창이 바뀌면 닫기 (키와 무관한 이동도 받는다) |
+| 5초 안전 타이머 | 위 셋이 놓친 것의 상한 |
 
-`onCompositorMoved` 가 실질적인 주 방어선이다. `Hyprland.focusedWorkspace` 와
-`activeToplevel` 을 **Super 를 누른 시점의 값과 비교**해서 판정한다.
+### 키 조합 감지 — 원인을 그대로 본다
+
+처음에는 컴포지터 이동 감지가 주 방어선이었다. 하지만 그건 **결과를 보는 간접 추론**이다.
+release 유실의 진짜 조건은 "홀드 중 다른 키가 눌렸나" 인데, 결과를 안 남기는 조합
+(메뉴·패널 토글·전체화면·리사이즈·유니버설 복사·알림·잠금) 이 Omarchy 기본 바인딩의
+절반 가까이라 그만큼이 5초 타이머까지 떠 있었다. 특히 `SUPER+CTRL` 계열 41개는
+거의 전부 메뉴·패널이라 **한 개도 안 잡혔다.**
+
+Hyprland 0.56 Lua API 의 `hl.on("input.keyboard.key")` 가 조건을 그대로 준다
+([`hypr/workspace-peek.lua`](../hypr/workspace-peek.lua)).
+
+```lua
+hl.on("input.keyboard.key", function(keycode, _, state)
+  if state ~= 1 then return end
+  if SUPER_KEYCODES[keycode] then return end
+  if not hl.is_key_down("Super_L") then return end
+
+  hl.dispatch(cancel)
+end)
+```
+
+셸 쪽은 `workspace-peek-cancel` 글로벌 단축키를 하나 더 등록해 이걸 받는다.
+
+**실측으로 확인한 것** (0.56.2, 물리 키 입력):
+
+| | 결과 |
+|---|---|
+| 콜백 인자 | `(xkb 키코드, ms 타임스탬프, 1=down / 0=up)` — 스텁에는 `fun(...)` 로만 되어 있다 |
+| 레이어셸 포커스 중 | **온다.** `SUPER+SPACE` 로 메뉴를 연 뒤 친 글자가 그대로 잡혔다 |
+| 중복 발행 | 같은 이벤트가 두 번 오는 경우가 있다 (같은 타임스탬프). fcitx5 가 키를 되돌려 보내는 경로로 보이며, 취소는 멱등이라 무해하다 |
+| `hl.is_key_down` | Super 홀드 상태를 정확히 따라온다 |
+
+Super 자신의 press 는 걸러야 한다 — 안 그러면 팝업이 뜨자마자 스스로를 취소한다.
+press 바인딩이 `Super_L` **키심**이므로 표준 배열에서 그 키심을 나르는 키코드
+(`133`, evdev 125+8) 를 제외한다. Super 를 다른 물리 키로 재매핑하면 이 목록도 같이 고쳐야 한다.
+
+비용은 상태 검사 한 번이다. 릴리스 이벤트에서 바로 빠져나가고, 실제 키 누름에 대해서만
+컴포지터에 Super 상태를 묻는다.
+
+### 컴포지터 이동 감지는 남긴다
+
+주 방어선 자리는 내줬지만 **그 자체로 옳은 동작**이라 유지한다 — 컴포지터가 움직였으면
+화면의 목록은 이미 낡았고, 키를 거치지 않은 이동(다른 창 클릭, 창 규칙, 포커스를 뺏는 알림)
+도 있다. `Hyprland.focusedWorkspace` 와 `activeToplevel` 을 **Super 를 누른 시점의 값과
+비교**해서 판정한다.
 
 - **비교 방식**이라 타이밍에 의존하지 않는다. 시간 기반 유예(grace)를 먼저 시도했는데,
   유예 구간이 하필 잡아야 할 케이스(팝업 직후 `SUPER+2`)를 그대로 삼켰다.
@@ -257,7 +309,8 @@ PRESSED  → show
 - `refreshToplevels()` 가 `activeToplevelChanged` 를 헛되이 재발행해도 주소가 같으면
   무시된다.
 
-남는 빈틈은 **컴포지터 상태를 안 바꾸는 Super 조합**뿐이고, 그건 5초 타이머가 받는다.
+남는 빈틈은 **키도 안 누르고 컴포지터도 안 움직이는 경우**뿐이다 (`SUPER+드래그` 로 같은 창을
+옮기는 정도). 5초 타이머가 받는다.
 
 ### 그 외 함정
 
@@ -350,10 +403,10 @@ require 줄은 `-- workspaces-widget:begin/end` 마커로 감싸 멱등하게 �
 minsoft1115.workspaces/
 ├── manifest.json      kinds: ["bar-widget", "service"]
 ├── Workspaces.qml     바 위젯 (모니터당 1) — 숫자 + PopupCard, 포커스 모니터 게이팅
-├── PeekService.qml    서비스 (셸당 1)     — GlobalShortcut + 브로드캐스트 + 닫기 3중 방어
+├── PeekService.qml    서비스 (셸당 1)     — GlobalShortcut 2개 + 브로드캐스트 + 닫기 4중 방어
 ├── PeekCard.qml       팝업 레이아웃       — 배지 + 아이콘/앱이름/제목, 폭 실측
 └── PeekModel.js       모델 빌드           — lastIpcObject 에서, 프로세스 안 띄움
-hypr/workspace-peek.lua   Hyprland 바인딩
+hypr/workspace-peek.lua   Hyprland 바인딩 + 키 조합 감지 훅
 ```
 
 튜닝 지점:

@@ -88,7 +88,7 @@ minsoft1115.workspaces/     Quickshell 플러그인 (바 위젯 + 셸 서비스)
 ├── PeekService.qml         셸 서비스 — 단축키 등록 + 팝업 제어
 ├── PeekCard.qml            팝업 레이아웃
 └── PeekModel.js            창 목록 모델
-hypr/workspace-peek.lua     Hyprland 키 바인딩
+hypr/workspace-peek.lua     Hyprland 키 바인딩 + 키 조합 감지 훅
 ```
 
 소스는 저장소에 있고, 스크립트가 **복사해서** 설치한다.
@@ -152,8 +152,9 @@ hypr/workspace-peek.lua     Hyprland 키 바인딩
 **QML 을 고치면 셸 재시작이 필요하다.** `omarchy-shell shell rescanPlugins` 로는 파일 내용
 변경이 반영되지 않아서, `install` 이 알아서 `omarchy restart shell` 을 한다.
 
-**Super 를 누른 채 다른 키를 누르면** Hyprland 가 뗌 이벤트를 주지 않는다. 팝업은 워크스페이스
-변경·창 전환을 감지해 스스로 닫고, 그래도 안 닫히면 5초 뒤 강제로 닫힌다.
+**Super 를 누른 채 다른 키를 누르면** Hyprland 가 뗌 이벤트를 주지 않는다. 그래서
+`workspace-peek.lua` 가 `hl.on("input.keyboard.key")` 로 그 순간을 직접 잡아 팝업을 취소한다.
+워크스페이스·활성 창이 바뀌어도 닫히고, 그래도 안 닫히면 5초 뒤 강제로 닫힌다.
 
 더 깊은 내용:
 

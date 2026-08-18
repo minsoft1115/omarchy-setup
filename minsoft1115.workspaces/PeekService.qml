@@ -21,7 +21,7 @@ Item {
   // Super is a modifier, so the shortcut also fires when Super is pressed as
   // the start of SUPER+X. Measured gap from Super down to the next key was
   // 150-230ms, which this delay does not clear on its own — it does not have
-  // to. A chord that slips past it moves the compositor, and onCompositorMoved
+  // to. The second key of a chord that slips past it arrives as a cancel and
   // drops the pending open before it can fire. The delay only has to filter
   // the fastest chords; keeping it short is what makes a deliberate hold feel
   // immediate.
@@ -30,9 +30,10 @@ Item {
   // Hyprland does not deliver the shortcut's release event if another key was
   // pressed during the hold — verified on 0.56.2, both through exec_cmd binds
   // and through hyprland-global-shortcuts-v1. Relying on `released` alone
-  // therefore strands the overlay open. The compositor-moved backstop below
-  // catches most of it; this is the hard ceiling for anything it misses, so
-  // the overlay can never outlive its welcome by more than a few seconds.
+  // therefore strands the overlay open. The chord shortcut below covers that
+  // case directly and the compositor-moved backstop covers the rest; this is
+  // only the ceiling for whatever both of them miss (a Super held down with no
+  // key and no compositor change at all).
   readonly property int safetyTimeoutMs: 5000
 
   readonly property string pluginId: manifest && manifest.id ? String(manifest.id) : ""
@@ -86,11 +87,12 @@ Item {
     callAll("showPeek")
   }
 
-  // Something moved under us. If the overlay is already up, close it; if it is
-  // still counting down, drop the pending open — the user is mid-chord, and
-  // letting the timer fire would put the overlay up *after* the action it was
-  // never meant to interrupt, with no release event coming to take it down.
-  function onCompositorMoved(reason) {
+  // The peek is over, from something other than a clean release. If the overlay
+  // is already up, close it; if it is still counting down, drop the pending
+  // open — the user is mid-chord, and letting the timer fire would put the
+  // overlay up *after* the action it was never meant to interrupt, with no
+  // release event coming to take it down.
+  function dismiss(reason) {
     if (openTimer.running) {
       openTimer.stop()
       console.log("peek: pending open cancelled -", reason)
@@ -117,6 +119,20 @@ Item {
     onReleased: root.hide("released")
   }
 
+  // Fired by hypr/workspace-peek.lua the moment any other key goes down while
+  // Super is held. That is precisely the condition under which Hyprland stops
+  // delivering the release, so this is the direct answer to the lost release
+  // rather than an inference from its after-effects — it lands even when the
+  // chord changes nothing the compositor reports (menus, panel toggles,
+  // fullscreen, resize, universal copy/paste, lock).
+  GlobalShortcut {
+    appid: "minsoft1115"
+    name: "workspace-peek-cancel"
+    description: "Dismiss the workspace peek when a chord starts"
+
+    onPressed: root.dismiss("key-chord")
+  }
+
   Timer {
     id: openTimer
     interval: root.openDelayMs
@@ -129,19 +145,19 @@ Item {
     onTriggered: root.hide("safety-timeout")
   }
 
-  // Backstops for the lost release. Whatever the user did with SUPER+X almost
-  // always lands here: switching workspace, focusing or opening a window. It is
-  // also the right behaviour on its own — once the compositor state moves, the
-  // list on screen is stale.
+  // Kept alongside the chord shortcut, for its own sake rather than as a
+  // backstop: once the compositor has moved, the list on screen is stale, so it
+  // should come down whether or not a key was involved (a click on another
+  // window, a rule moving one, a notification stealing focus).
   Connections {
     target: Hyprland
     function onFocusedWorkspaceChanged() {
       if (root.currentWorkspaceId() !== root.armedWorkspaceId)
-        root.onCompositorMoved("workspace-changed")
+        root.dismiss("workspace-changed")
     }
     function onActiveToplevelChanged() {
       if (root.currentToplevelAddress() !== root.armedToplevelAddress)
-        root.onCompositorMoved("toplevel-changed")
+        root.dismiss("toplevel-changed")
     }
   }
 }
