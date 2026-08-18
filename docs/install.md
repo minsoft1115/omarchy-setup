@@ -50,6 +50,12 @@ What should be set up? (space toggles, enter confirms)
 - 고른 순서와 무관하게 **실행 순서는 고정**이다: 한글 → bash → 위젯.
   위젯이 `omarchy restart shell` 로 바를 재시작하므로 마지막이다
 - `gum` 이 없으면 항목별 `[Y/n]` 로 묻는다
+- **물어볼 터미널이 아예 없으면 거부한다.** CI·cron·프로비저닝 스크립트처럼 보는 사람이 없는
+  곳에서 동의를 넘겨짚지 않는다. 그런 환경에서는 `--all` 이나 `--only` 로 명시해야 한다
+
+```
+[x] no terminal to ask at — say what you want with --all or --only korean,bash,widget
+```
 
 ### 미리 답해 두는 질문
 
@@ -90,8 +96,7 @@ What should be set up? (space toggles, enter confirms)
   제거는 아니다
 - **설치의 역순**으로 진행한다 (위젯 → bash → 한글)
 - 끝나면 `~/.config/minsoft1115/` 가 비었을 때 정리한다
-- 물어볼 터미널이 없으면 **거부한다.** 설치는 전체 선택으로 진행해도 되지만, 제거를 말없이
-  전부 고를 수는 없다
+- 물어볼 터미널이 없으면 **거부한다** (설치와 같다)
 
 무엇을 지우는지는 각 스크립트가 정한다. 특히 한글 쪽은 **fcitx5 설정을 일부러 남긴다** —
 [docs/setup-korean.md](setup-korean.md) 참고.

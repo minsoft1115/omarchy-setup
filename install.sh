@@ -128,11 +128,14 @@ bootstrap() {
 
   # Re-run from the clone with a real terminal on stdin. Without this the
   # checklist gets EOF from the curl pipe and selects nothing.
+  #
+  # No terminal at all is left to the copy in the clone to complain about. It is
+  # not turned into "install everything": a pipe with nobody watching -- CI, a
+  # cron line, a provisioning script -- is the last place to guess consent.
   if have_tty; then
     exec bash "$CLONE_DIR/install.sh" "$@" </dev/tty
   fi
-  warn "no terminal available — running everything unattended"
-  exec bash "$CLONE_DIR/install.sh" --all "$@"
+  exec bash "$CLONE_DIR/install.sh" "$@"
 }
 
 # ==============================================================================
@@ -233,11 +236,8 @@ else
         case "$reply" in [nN]*) ;; *) chosen="$chosen${labels[$i]}"$'\n' ;; esac
       fi
     done
-  elif [ "$REMOVE" = 1 ]; then
-    die "no terminal to ask at — name what to remove with --only, or pass --all"
   else
-    warn "no terminal to ask at — selecting everything (use --only to narrow)"
-    chosen="$(printf '%s\n' "${labels[@]}")"
+    die "no terminal to ask at — say what you want with --all or --only $(printf %s "${STEP_NAMES[*]}" | tr ' ' ',')"
   fi
 
   [ -n "${chosen//[$'\n\t ']/}" ] || { log "nothing selected — done"; exit 0; }
