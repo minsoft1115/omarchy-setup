@@ -1,0 +1,15 @@
+-- Open the Omarchy menus with Latin input instead of Hangul.
+--
+-- A menu opened while the input method is in Hangul mode cannot be searched:
+-- what you type goes through the composer and never matches an entry. The
+-- wrapper switches the input method to Latin first, then runs the real command.
+--
+-- Installed to ~/.config/minsoft1115/hypr/ by setup-korean.sh, which adds one
+-- require line to ~/.config/hypr/hyprland.lua between markers. Omarchy's own
+-- bindings.lua is never edited.
+--
+-- The lines below are filled in by the script rather than written here, because
+-- the command behind each key differs between Omarchy versions. The script reads
+-- it out of Omarchy's own defaults and wraps whatever it finds, so an upgrade
+-- that renames a command does not leave a binding pointing at nothing.
+__BINDINGS__

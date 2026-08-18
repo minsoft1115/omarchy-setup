@@ -4,12 +4,12 @@
 #                                into the running Omarchy shell
 # ==============================================================================
 # Usage:
-#   ./install-workspaces-widget.sh status     Show current state (default)
-#   ./install-workspaces-widget.sh install    Copy source into Omarchy and use it
-#   ./install-workspaces-widget.sh revert     Go back to the stock Omarchy widget
-#   ./install-workspaces-widget.sh remove     Revert, then delete the installed copy
-#   ./install-workspaces-widget.sh diff       source vs installed, source vs stock
-#   ./install-workspaces-widget.sh --help     This help
+#   ./scripts/install-workspaces-widget.sh status     Show current state (default)
+#   ./scripts/install-workspaces-widget.sh install    Copy source into Omarchy and use it
+#   ./scripts/install-workspaces-widget.sh revert     Go back to the stock Omarchy widget
+#   ./scripts/install-workspaces-widget.sh remove     Revert, then delete the installed copy
+#   ./scripts/install-workspaces-widget.sh diff       source vs installed, source vs stock
+#   ./scripts/install-workspaces-widget.sh --help     This help
 #
 # Options:
 #   --no-restart    Skip the shell restart (install files now, restart later)
@@ -20,13 +20,19 @@
 # Layout:
 #   source (edit here)  ./minsoft1115.workspaces/     tracked in this repo
 #   installed copy      ~/.config/omarchy/plugins/minsoft1115.workspaces/
-#   Hyprland binding    ./hypr/workspace-peek.lua  ->  ~/.config/hypr/
+#   Hyprland binding    ./hypr/workspace-peek.lua  ->  ~/.config/minsoft1115/hypr/
 #
 # The widget also ships a Super-hold peek overlay, and that half needs a
 # Hyprland keybinding: a GlobalShortcut only registers a name, the compositor
-# decides what triggers it. So install lays down the Lua fragment and adds one
-# require line to ~/.config/hypr/hyprland.lua, between markers so it can be
-# taken back out exactly. revert removes the line; remove deletes the fragment.
+# decides what triggers it. So install lays down the Lua fragment under
+# ~/.config/minsoft1115/hypr/ and adds one require line to
+# ~/.config/hypr/hyprland.lua, between markers so it can be taken back out
+# exactly. revert removes the line; remove deletes the fragment.
+#
+# The fragment sits in its own namespace instead of among Omarchy's own hypr
+# files; ~/.config is on Hyprland's Lua package.path, so
+# require("minsoft1115.hypr.workspace-peek") resolves there. Nothing Omarchy
+# ships is edited -- hyprland.lua is the single point of contact.
 #
 #   install copies the source into place. It is a copy, not a symlink: Omarchy's
 #   plugin watcher (inotifywait -r) does not follow symlinks, so a linked plugin
@@ -69,10 +75,12 @@ set -euo pipefail
 # ==============================================================================
 : "${TS:=$(date +%s)}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "$(readlink -f -- "$0")")" && pwd)"
+# Sources live in the repo root; this script sits in scripts/.
+REPO_DIR="$(dirname -- "$SCRIPT_DIR")"
 
 PLUGIN_ID="${PLUGIN_ID:-minsoft1115.workspaces}"
 STOCK_ID="${STOCK_ID:-omarchy.workspaces}"
-SRC_DIR="${SRC_DIR:-$SCRIPT_DIR/$PLUGIN_ID}"
+SRC_DIR="${SRC_DIR:-$REPO_DIR/$PLUGIN_ID}"
 PLUGINS_DIR="${PLUGINS_DIR:-$HOME/.config/omarchy/plugins}"
 SHELL_JSON="${SHELL_JSON:-$HOME/.config/omarchy/shell.json}"
 # Stock widget sources, used by `diff`. Only consulted if the catalog lookup fails.
@@ -84,8 +92,16 @@ SETTLE_SECONDS="${SETTLE_SECONDS:-2}"
 HYPR_DIR="${HYPR_DIR:-$HOME/.config/hypr}"
 HYPR_MAIN="${HYPR_MAIN:-$HYPR_DIR/hyprland.lua}"
 BIND_NAME="${BIND_NAME:-workspace-peek}"
-BIND_SRC="${BIND_SRC:-$SCRIPT_DIR/hypr/$BIND_NAME.lua}"
-BIND_DST="$HYPR_DIR/$BIND_NAME.lua"
+BIND_SRC="${BIND_SRC:-$REPO_DIR/hypr/$BIND_NAME.lua}"
+# Lua fragments live under our own namespace rather than in ~/.config/hypr, so
+# nothing of ours sits among the files Omarchy ships and edits. ~/.config is on
+# Hyprland's package.path, which is what makes the dotted module name resolve.
+FRAG_DIR="${FRAG_DIR:-$HOME/.config/minsoft1115/hypr}"
+FRAG_MODULE="minsoft1115.hypr"
+BIND_DST="$FRAG_DIR/$BIND_NAME.lua"
+# Where it used to be installed, cleaned up on the next install.
+BIND_DST_LEGACY="$HYPR_DIR/$BIND_NAME.lua"
+BIND_REQUIRE="require(\"$FRAG_MODULE.$BIND_NAME\")"
 BIND_BEGIN="-- workspaces-widget:begin"
 BIND_END="-- workspaces-widget:end"
 
@@ -240,6 +256,7 @@ install_binding() {
   [ -f "$HYPR_MAIN" ] || { warn "$HYPR_MAIN not found — skipping the Hyprland binding"; return 0; }
 
   local changed=0
+  mkdir -p "$FRAG_DIR"
   if [ -f "$BIND_DST" ] && cmp -s "$BIND_SRC" "$BIND_DST"; then
     log "Hyprland binding fragment already current"
   else
@@ -248,12 +265,25 @@ install_binding() {
     changed=1
   fi
 
-  if bind_line_present; then
+  # Older versions put the fragment in ~/.config/hypr and required it from
+  # there. Leaving that copy behind would load the bindings twice.
+  if [ -f "$BIND_DST_LEGACY" ]; then
+    rm -f "$BIND_DST_LEGACY"
+    log "removed the old copy at $BIND_DST_LEGACY"
+    changed=1
+  fi
+
+  # Compare the block's contents, not just its presence: the require line itself
+  # changed when the fragment moved, and a stale line would point nowhere.
+  local current
+  current="$(sed -n "/^$BIND_BEGIN$/,/^$BIND_END$/p" "$HYPR_MAIN" | sed '1d;$d')"
+  if [ "$current" = "$BIND_REQUIRE" ]; then
     log "hyprland.lua already requires the binding"
   else
     backup "$HYPR_MAIN"
-    printf '\n%s\nrequire("hypr.%s")\n%s\n' "$BIND_BEGIN" "$BIND_NAME" "$BIND_END" >>"$HYPR_MAIN"
-    log "added require(\"hypr.$BIND_NAME\") to $HYPR_MAIN"
+    remove_binding_block
+    printf '\n%s\n%s\n%s\n' "$BIND_BEGIN" "$BIND_REQUIRE" "$BIND_END" >>"$HYPR_MAIN"
+    log "added $BIND_REQUIRE to $HYPR_MAIN"
     changed=1
   fi
 
@@ -264,13 +294,20 @@ install_binding() {
   [ -z "$errors" ] || warn "Hyprland reported config errors:"$'\n'"$errors"
 }
 
-remove_binding_line() {
-  bind_line_present || { log "hyprland.lua has no binding line — skipped"; return 0; }
-  backup "$HYPR_MAIN"
-  sed -i "/$BIND_BEGIN/,/$BIND_END/d" "$HYPR_MAIN"
+# Cut the marked block out, without the logging or the reload: install calls
+# this too, to replace a block whose contents are out of date.
+remove_binding_block() {
+  bind_line_present || return 0
+  sed -i "/^$BIND_BEGIN$/,/^$BIND_END$/d" "$HYPR_MAIN"
   # Drop the blank line the block was padded with, so repeated
   # install/revert cycles do not slowly grow a gap at the end of the file.
   sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$HYPR_MAIN"
+}
+
+remove_binding_line() {
+  bind_line_present || { log "hyprland.lua has no binding line — skipped"; return 0; }
+  backup "$HYPR_MAIN"
+  remove_binding_block
   log "removed the require line from $HYPR_MAIN"
   command -v hyprctl >/dev/null 2>&1 && hyprctl reload >/dev/null 2>&1
 }
@@ -383,6 +420,7 @@ do_remove() {
     rm -f "$BIND_DST"
     log "deleted: $BIND_DST"
   fi
+  [ -f "$BIND_DST_LEGACY" ] && { rm -f "$BIND_DST_LEGACY"; log "deleted: $BIND_DST_LEGACY"; }
   rm -rf "$DST_DIR"
   log "deleted: $DST_DIR (the source at $SRC_DIR is untouched)"
   omarchy-shell shell rescanPlugins >/dev/null 2>&1 || true

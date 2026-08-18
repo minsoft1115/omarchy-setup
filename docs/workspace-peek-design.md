@@ -2,7 +2,7 @@
 
 > **구현 완료.** 처음 세운 설계와, 실측으로 뒤집힌 가정들을 함께 남긴다.
 > 배경은 [quickshell-workspaces.md](quickshell-workspaces.md) 참고.
-> 설치는 [`install-workspaces-widget.sh`](../install-workspaces-widget.sh) 가 한다.
+> 설치는 [`install-workspaces-widget.sh`](../scripts/install-workspaces-widget.sh) 가 한다.
 
 **목표**: Super 키를 누르고 있는 동안, 창이 있는 워크스페이스들의 클라이언트 목록을
 **포커스된 모니터에만** 띄우고, 떼면 사라진다.
@@ -194,8 +194,9 @@ Item {
 
 `GlobalShortcut` 은 **이름만 등록**한다. 실제 키 연결은 Hyprland 설정이 해야 하므로
 플러그인만으로는 완결되지 않는다. 저장소의 [`hypr/workspace-peek.lua`](../hypr/workspace-peek.lua)
-가 그 역할이고, 스크립트가 `~/.config/hypr/` 로 복사한 뒤 `hyprland.lua` 에 require 한 줄을
-마커로 감싸 넣는다.
+가 그 역할이고, 스크립트가 `~/.config/minsoft1115/hypr/` 로 복사한 뒤 `hyprland.lua` 에
+`require("minsoft1115.hypr.workspace-peek")` 한 줄을 마커로 감싸 넣는다. `~/.config` 가
+Hyprland 의 Lua `package.path` 에 있어서 점 표기 모듈명이 그대로 해석된다.
 
 ```lua
 local peek = hl.dsp.global("minsoft1115:workspace-peek")
@@ -381,7 +382,7 @@ contentWidth: fittedContentWidth(peekCard.implicitWidth + horizontalInset)
 
 | 동작 | 하는 일 |
 |---|---|
-| `install` | 플러그인 복사 + 바에 적용 + 셸 재시작, 그리고 `workspace-peek.lua` 설치 + `hyprland.lua` 에 require 한 줄 + `hyprctl reload` |
+| `install` | 플러그인 복사 + 바에 적용 + 셸 재시작, 그리고 `workspace-peek.lua` 를 `~/.config/minsoft1115/hypr/` 에 설치 + `hyprland.lua` 에 require 한 줄 + `hyprctl reload` |
 | `revert` | require 줄 제거 + reload, 위젯은 Omarchy 기본으로 원복 (플러그인·바인딩 파일은 남김) |
 | `remove` | 위 + 설치본과 바인딩 파일 삭제 |
 | `status` | 위젯 상태 + 바인딩 3단계(파일 설치 / require 여부 / `Super_L` 실제 바인딩 여부) |

@@ -1,0 +1,3 @@
+gdiff() {
+  git diff "$@" | delta
+}
