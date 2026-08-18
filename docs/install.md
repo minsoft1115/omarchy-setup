@@ -54,8 +54,22 @@ What should be set up? (space toggles, enter confirms)
   | `up to date` | 저장소와 같음 | — |
 
   전부 `up to date` 면 헤더가 `Everything is up to date — pick anything to re-apply` 로 바뀐다.
-  판정은 저장소 파일과 설치본을 **직접 비교**한다. 각 스크립트의 `status` 출력을 파싱하지
-  않는다 — 메뉴에 한 단어 띄우자고 남의 문구에 묶일 이유가 없다.
+
+  판정은 저장소 파일과 설치본을 **바이트 단위로 비교**한다. 각 스크립트의 `status` 출력을
+  파싱하지 않는다 — 메뉴에 한 단어 띄우자고 남의 문구에 묶일 이유가 없다.
+
+  | 스텝 | 설치 여부 판단 | 최신 여부 비교 대상 |
+  |---|---|---|
+  | `korean` | 조각 파일 + `hyprland.lua` 의 마커 | `hypr/korean-input.lua` |
+  | `bash-config` | `~/.bashrc` 의 마커 | `bash/*.sh` 전부 (설치본에 없는 파일도 차이로 본다) |
+  | `workspaces` | 플러그인 `manifest.json` | 플러그인 폴더 전체 + `hypr/workspace-peek.lua` |
+  | `pkg-guards` | 설치본에 파일 존재 | `bash/pkg-guards.sh` |
+
+  `korean-bindings.lua` 는 머신마다 생성되는 파일이라 비교에서 뺀다 — 명령 문자열이 Omarchy
+  기본값에서 나오므로 저장소 쪽에 대응하는 원본이 없다. 스텝을 다시 돌리면 어차피 다시 만든다.
+
+  선택 파일이 빠져 있는 것은 **차이가 아니라 선택**이라, `bash-config` 는 `pkg-guards.sh` 가
+  없다고 `needs update` 가 되지 않는다.
 
 - **`pkg-guards` 는 bash 항목의 하위 토글**로 같이 뜬다. 이건 "할 일" 이 아니라 **원하는
   상태**라, 설치돼 있으면 체크된 채로 시작한다. 체크하고 진행하면 `--with-optional`,
@@ -70,7 +84,7 @@ What should be set up? (space toggles, enter confirms)
   곳에서 동의를 넘겨짚지 않는다. 그런 환경에서는 `--all` 이나 `--only` 로 명시해야 한다
 
 ```
-[x] no terminal to ask at — say what you want with --all or --only korean,bash,widget
+[x] no terminal to ask at — say what you want with --all or --only korean,bash-config,workspaces
 ```
 
 ### 미리 답해 두는 질문
@@ -86,7 +100,7 @@ What should be set up? (space toggles, enter confirms)
 | 옵션 | 하는 일 |
 |---|---|
 | `--all` | 묻지 않고 전부 |
-| `--only korean,bash` | 이름으로 지정 |
+| `--only korean,bash-config` | 이름으로 지정 (`--list` 의 첫 열) |
 | `--guards` / `--no-guards` | pkg-guards 답을 미리 정함 |
 | `--list` | 설치 가능한 것과 현재 상태만 출력 |
 | `--dry-run` | 무엇이 돌지만 보여 주고 실행 안 함 |
@@ -96,8 +110,20 @@ What should be set up? (space toggles, enter confirms)
 
 ```bash
 ./install.sh --list
-./install.sh --only widget
+./install.sh --only workspaces
 ./install.sh --all --no-guards
+```
+
+`--list` 의 첫 열이 `--only` 에 넘기는 이름이다.
+
+```
+$ ./install.sh --list
+name         state          what it does
+korean       [up to date]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
+bash-config  [needs update] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+workspaces   [up to date]   Workspaces bar — hold Super to see which apps are where before switching
+
+use with: install.sh --only korean,bash-config,workspaces
 ```
 
 ---
@@ -144,8 +170,8 @@ What should be set up? (space toggles, enter confirms)
 ```
 == Summary ==
   korean ok
-  bash FAILED
-  widget ok
+  bash-config FAILED
+  workspaces ok
 ```
 
 전형적인 실패는 패키지 설치 단계에서 sudo 비밀번호를 못 받는 경우다. 그때도 설정 파일 설치는
