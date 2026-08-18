@@ -61,7 +61,7 @@ What should be set up? (space toggles, enter confirms)
 | 옵션 | 하는 일 |
 |---|---|
 | `--all` | 묻지 않고 전부 |
-| `--only korean,bash` | 이름으로 지정 |
+| `--only korean,bash-config` | 이름으로 지정 (`--list` 의 첫 열) |
 | `--guards` / `--no-guards` | pkg-guards 답을 미리 정함 |
 | `--list` | 설치 가능한 것과 현재 상태만 출력 |
 | `--dry-run` | 무엇이 돌지만 보여 주고 실행 안 함 |
@@ -152,7 +152,8 @@ cd omarchy-setup
 | `bash/gdiff.sh` | `gdiff` — `git diff` 를 `delta` 로 넘겨 본다. 인자는 그대로 전달 |
 | `bash/pkg-guards.sh` | **선택** — `pacman`·`yay` 를 실행 대신 안내로 막고(`omarchy pkg add` / `omarchy pkg drop` / `omarchy pkg aur add` / `omarchy update`), `sudo` 뒤에 공백을 둬 `sudo pacman` 도 걸리게 한다 |
 
-`pkg-guards.sh` 는 Omarchy 가 이미 비슷한 것을 갖고 있어서 **설치할지 물어본다** (`gum confirm`).
+`pkg-guards.sh` 는 Omarchy 가 이미 비슷한 것을 갖고 있어서 **설치할지 물어본다** — 이 스크립트를
+직접 돌리면 `gum confirm` 으로, `install.sh` 로 돌리면 체크리스트의 하위 행으로 답한다.
 Omarchy 기본 rc 다음에 로드되므로 같은 이름이면 이쪽이 이기고, 로드 순서는 **파일명 순**이다.
 의존 도구(`git-delta`, `bat`, `ripgrep`, `fzf`)는 `install` 이 **`omarchy pkg` 로 먼저 깐다.**
 

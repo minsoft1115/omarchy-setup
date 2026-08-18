@@ -6,7 +6,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/minsoft1115/omarchy-setup/main/install.sh | bash
 #   ./install.sh                 Pick from a checklist (everything preselected)
 #   ./install.sh --all           Run everything, no questions
-#   ./install.sh --only korean,bash
+#   ./install.sh --only korean,bash-config
 #   ./install.sh --remove        Take things back out (nothing preselected)
 #   ./install.sh --list          Show what is available and its current state
 #   ./install.sh --help          This help
@@ -58,17 +58,17 @@ have_tty() {
 # picked in: the widget restarts the Omarchy shell, so it goes last and does not
 # blink the bar out from under the steps that follow.
 # ==============================================================================
-STEP_NAMES=(korean bash widget)
+STEP_NAMES=(korean bash-config workspaces)
 
 # No commas in these: gum takes the preselected set as one comma-separated
 # string matched against the option text, so a comma inside a label splits it
 # and the match silently fails.
 step_label() {
   case "$1" in
-    korean) echo "Korean input — right Alt for 한/영 · Omarchy menu opens in Latin" ;;
-    bash)   echo "Bash config — Alt-R history picker · fzf search and kill · delta diffs" ;;
-    guards) echo "└─ pkg-guards — answer pacman/yay with the omarchy command" ;;
-    widget) echo "Workspaces bar — hold Super to see which apps are where before switching" ;;
+    korean)      echo "Korean input — right Alt for 한/영 · Omarchy menu opens in Latin" ;;
+    bash-config) echo "Bash config — Alt-R history picker · fzf search and kill · delta diffs" ;;
+    guards)      echo "└─ pkg-guards — answer pacman/yay with the omarchy command" ;;
+    workspaces)  echo "Workspaces bar — hold Super to see which apps are where before switching" ;;
   esac
 }
 
@@ -94,7 +94,7 @@ step_state() {
       cmp -s "$REPO_DIR/hypr/korean-input.lua" "$FRAG_DIR/korean-input.lua" \
         || { echo "needs update"; return; }
       ;;
-    bash)
+    bash-config)
       grep -qF -e "# minsoft1115-bash:begin" "$HOME/.bashrc" 2>/dev/null \
         || { echo "not installed"; return; }
       for f in "$REPO_DIR"/bash/*.sh; do
@@ -110,7 +110,7 @@ step_state() {
       cmp -s "$REPO_DIR/bash/pkg-guards.sh" "$BASH_DST/pkg-guards.sh" \
         || { echo "needs update"; return; }
       ;;
-    widget)
+    workspaces)
       [ -f "$PLUGIN_DST/manifest.json" ] || { echo "not installed"; return; }
       diff -r -q "$REPO_DIR/minsoft1115.workspaces" "$PLUGIN_DST" >/dev/null 2>&1 \
         || { echo "needs update"; return; }
@@ -125,9 +125,9 @@ step_state() {
 # definition means the dry run cannot drift from what actually happens.
 step_cmd() {
   case "$1" in
-    korean) echo "scripts/setup-korean.sh" ;;
-    bash)   echo "scripts/install-bash-config.sh install $GUARDS_FLAG" ;;
-    widget) echo "scripts/install-workspaces-widget.sh install" ;;
+    korean)      echo "scripts/setup-korean.sh" ;;
+    bash-config) echo "scripts/install-bash-config.sh install${GUARDS_FLAG:+ $GUARDS_FLAG}" ;;
+    workspaces)  echo "scripts/install-workspaces-widget.sh install" ;;
   esac
 }
 
@@ -138,9 +138,9 @@ step_run() {
 
 step_remove_cmd() {
   case "$1" in
-    korean) echo "scripts/setup-korean.sh remove" ;;
-    bash)   echo "scripts/install-bash-config.sh remove" ;;
-    widget) echo "scripts/install-workspaces-widget.sh remove" ;;
+    korean)      echo "scripts/setup-korean.sh remove" ;;
+    bash-config) echo "scripts/install-bash-config.sh remove" ;;
+    workspaces)  echo "scripts/install-workspaces-widget.sh remove" ;;
   esac
 }
 
@@ -222,9 +222,13 @@ done
 [ -n "$REPO_DIR" ] || bootstrap "${ARGS[@]}"
 
 if [ "$LIST_ONLY" = 1 ]; then
+  # The first column is the name --only takes; without saying so it reads as
+  # noise next to the sentence that follows it.
+  printf '%-12s %-14s %s\n' "name" "state" "what it does"
   for name in "${STEP_NAMES[@]}"; do
-    printf '  %-8s %-14s %s\n' "$name" "[$(step_state "$name")]" "$(step_label "$name")"
+    printf '%-12s %-14s %s\n' "$name" "[$(step_state "$name")]" "$(step_label "$name")"
   done
+  printf '\nuse with: %s --only %s\n' "${SELF##*/}" "$(printf %s "${STEP_NAMES[*]}" | tr ' ' ',')"
   exit 0
 fi
 
@@ -271,7 +275,7 @@ else
     labels+=("$(printf '%-14s %s' "[$state]" "$(step_label "$name")")")
     [ "$state" = "up to date" ] || { preselect+=("${labels[-1]}"); todo=$((todo + 1)); }
 
-    if [ "$name" = bash ] && [ "$REMOVE" = 0 ]; then
+    if [ "$name" = bash-config ] && [ "$REMOVE" = 0 ]; then
       state="$(step_state guards)"
       menu_names+=(guards)
       labels+=("$(printf '%-14s %s' "[$state]" "$(step_label guards)")")
@@ -337,7 +341,7 @@ else
   # with and then leaves the list.
   if [ "$GUARDS_ANSWERED" = 0 ]; then
     case " ${selected[*]} " in
-      *" bash "*)
+      *" bash-config "*)
         case " ${selected[*]} " in
           *" guards "*) GUARDS_FLAG="--with-optional" ;;
           *)            GUARDS_FLAG="--no-optional" ;;
@@ -398,7 +402,7 @@ echo
 if [ "$REMOVE" = 1 ]; then
   rmdir "$HOME/.config/minsoft1115" 2>/dev/null && log "cleaned up empty $HOME/.config/minsoft1115"
   case " ${selected[*]} " in
-    *" bash "*) log "shells already open keep what they loaded until they restart" ;;
+    *" bash-config "*) log "shells already open keep what they loaded until they restart" ;;
   esac
   if [ "$PURGE" = 1 ] && [ "$DRY_RUN" = 0 ]; then
     log "deleting the clone at $REPO_DIR"
@@ -409,6 +413,6 @@ if [ "$REMOVE" = 1 ]; then
 else
   log "repo kept at $REPO_DIR — edit there and re-run an installer to apply"
   case " ${selected[*]} " in
-    *" bash "*) log "for the shell you are in right now: source ~/.bashrc" ;;
+    *" bash-config "*) log "for the shell you are in right now: source ~/.bashrc" ;;
   esac
 fi

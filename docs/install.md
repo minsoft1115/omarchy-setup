@@ -70,7 +70,7 @@ What should be set up? (space toggles, enter confirms)
   곳에서 동의를 넘겨짚지 않는다. 그런 환경에서는 `--all` 이나 `--only` 로 명시해야 한다
 
 ```
-[x] no terminal to ask at — say what you want with --all or --only korean,bash,widget
+[x] no terminal to ask at — say what you want with --all or --only korean,bash-config,workspaces
 ```
 
 ### 미리 답해 두는 질문
@@ -86,7 +86,7 @@ What should be set up? (space toggles, enter confirms)
 | 옵션 | 하는 일 |
 |---|---|
 | `--all` | 묻지 않고 전부 |
-| `--only korean,bash` | 이름으로 지정 |
+| `--only korean,bash-config` | 이름으로 지정 (`--list` 의 첫 열) |
 | `--guards` / `--no-guards` | pkg-guards 답을 미리 정함 |
 | `--list` | 설치 가능한 것과 현재 상태만 출력 |
 | `--dry-run` | 무엇이 돌지만 보여 주고 실행 안 함 |
@@ -96,8 +96,20 @@ What should be set up? (space toggles, enter confirms)
 
 ```bash
 ./install.sh --list
-./install.sh --only widget
+./install.sh --only workspaces
 ./install.sh --all --no-guards
+```
+
+`--list` 의 첫 열이 `--only` 에 넘기는 이름이다.
+
+```
+$ ./install.sh --list
+name         state          what it does
+korean       [up to date]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
+bash-config  [needs update] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+workspaces   [up to date]   Workspaces bar — hold Super to see which apps are where before switching
+
+use with: install.sh --only korean,bash-config,workspaces
 ```
 
 ---
@@ -144,8 +156,8 @@ What should be set up? (space toggles, enter confirms)
 ```
 == Summary ==
   korean ok
-  bash FAILED
-  widget ok
+  bash-config FAILED
+  workspaces ok
 ```
 
 전형적인 실패는 패키지 설치 단계에서 sudo 비밀번호를 못 받는 경우다. 그때도 설정 파일 설치는

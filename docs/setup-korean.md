@@ -109,10 +109,14 @@ setup-korean.sh — Omarchy 한글 입력(fcitx5 + hangul) 세팅
 [+] 백업: /home/user/.config/fcitx5/config.bak.1763251200
 [+] fcitx5 config 패치 (Control+space 제거, Hangul 유지)
 [+] 6) 오른쪽 Alt = 한/영 (kb_options: korean:ralt_hangul)
-[+] input.lua 에 kb_options 추가: compose:caps,shift:both_capslock_cancel,korean:ralt_hangul
+[+] 설치: /home/user/.config/minsoft1115/hypr/korean-input.lua
+[+] 백업: /home/user/.config/hypr/hyprland.lua.bak.1763251200
+[+] hyprland.lua 에 require 추가: require("minsoft1115.hypr.korean-input")
 [+] 7) 래퍼 작성: /home/user/.local/bin/omarchy-latin-launch
 [+] 8) Super+Space / Super+Alt+Space 재바인딩 (영문 먼저)
-[+] bindings.lua 재바인딩 (SUPER+SPACE: omarchy-menu toggle / SUPER+ALT+SPACE: omarchy-launch-walker)
+[+] 설치: /home/user/.config/minsoft1115/hypr/korean-bindings.lua
+[+] 바인딩 (SUPER+SPACE: omarchy-menu toggle / SUPER+ALT+SPACE: omarchy-menu toggle apps)
+[+] hyprland.lua 에 require 추가: require("minsoft1115.hypr.korean-input") require("minsoft1115.hypr.korean-bindings")
 [+] Hyprland reload
 [+] configerrors: 없음
 [+] fcitx5 시작
@@ -126,8 +130,9 @@ setup-korean.sh — Omarchy 한글 입력(fcitx5 + hangul) 세팅
 ```
 [+] 4) fcitx5 프로필: hangul IM 이미 존재 — 건너뜀
 [+] fcitx5 config: 이미 정리됨 (Control+space 없음, Hangul 있음) — 건너뜀
-[+] kb_options: input.lua 에 이미 korean:ralt_hangul — 건너뜀
-[+] 바인딩: 이미 래퍼로 재설정됨 — 건너뜀
+[+] korean-input.lua: 이미 최신 — 건너뜀
+[+] hyprland.lua: require 블록 이미 최신 — 건너뜀
+[+] korean-bindings.lua: 이미 최신 — 건너뜀
 ```
 
 이미 세팅된 머신에서 `--light` 를 돌리면 이렇게 끝난다 (실제 출력).
@@ -135,7 +140,8 @@ setup-korean.sh — Omarchy 한글 입력(fcitx5 + hangul) 세팅
 
 ```
 $ ./scripts/setup-korean.sh --light
-[+] kb_options: input.lua 에 이미 korean:ralt_hangul — 건너뜀
+[+] korean-input.lua: 이미 최신 — 건너뜀
+[+] hyprland.lua: require 블록 이미 최신 — 건너뜀
 [+] fcitx5 config: 이미 정리됨 — 재시작 불필요
 [+] Hyprland reload
 [+] configerrors: 없음
