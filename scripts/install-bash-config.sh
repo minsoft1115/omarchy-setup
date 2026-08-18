@@ -386,7 +386,12 @@ msb_remove_loader() {
 msb_smoke_test() {
   local out status=0
   # Long options have to come first; "bash -i --rcfile ..." is rejected.
-  out="$(bash --rcfile "$MSB_BASHRC" -i -c 'true' 2>&1)" || status=$?
+  #
+  # stdin comes from /dev/null so this shell cannot touch the terminal it was
+  # started from. An interactive bash takes the tty over for as long as it runs
+  # -- job control, readline setup, termios -- and there is no reason for a
+  # check to reach into the terminal of whoever is watching it.
+  out="$(bash --rcfile "$MSB_BASHRC" -i -c 'true' </dev/null 2>&1)" || status=$?
   # Running without a terminal makes bash complain about job control. That says
   # nothing about the rc file, so it is dropped rather than reported.
   out="$(printf '%s' "$out" \

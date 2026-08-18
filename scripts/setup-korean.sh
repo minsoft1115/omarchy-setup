@@ -91,6 +91,10 @@ OMARCHY_DEFAULTS="${OMARCHY_DEFAULTS:-/usr/share/omarchy/default/hypr}"
 # Lua 설정을 지원하는 최소 Hyprland 버전 (0.55 에서 도입)
 HYPR_LUA_MIN="${HYPR_LUA_MIN:-0.55.0}"
 HYPR_LUA_OK=""
+# 실제로 뭔가 고쳤을 때만 1. 아무것도 안 바꿨는데 hyprctl reload 나 fcitx5
+# 재시작을 하면 키보드 경로가 재구성되면서, 그 순간 눌려 있던 키의 뗌이
+# 유실돼 자동 반복이 멈추지 않는 일이 생긴다 (Enter 가 무한히 입력되는 증상).
+HYPR_CHANGED=0
 # hyprctl 로 현재 값을 못 읽을 때 쓰는 Omarchy 기본 kb_options
 KB_OPTIONS_FALLBACK="${KB_OPTIONS_FALLBACK:-compose:caps,shift:both_capslock_cancel}"
 LATIN_WRAPPER="${LATIN_WRAPPER:-omarchy-latin-launch}"   # ~/.local/bin (PATH 에 있음)
@@ -177,6 +181,7 @@ install_fragment() {
   else
     cp -a "$src" "$FRAG_DIR/$name"
     log "설치: $FRAG_DIR/$name"
+    HYPR_CHANGED=1
   fi
 }
 
@@ -211,6 +216,7 @@ sync_hypr_requires() {
 
   printf '\n%s\n%s\n%s\n' "$MARK_BEGIN" "$want" "$MARK_END" >> "$HYPR_MAIN_LUA"
   log "hyprland.lua 에 require 추가: $(printf '%s' "$want" | tr '\n' ' ')"
+  HYPR_CHANGED=1
 }
 
 # ------------------------------------------------------------------------------
@@ -307,6 +313,13 @@ apply_latin_launch_bindings() {
 }
 
 # ------------------------------------------------------------------------------
+# fcitx5 프로필에 hangul 그룹이 이미 있는지 → 0=있음(쓸 필요 없음)
+# ------------------------------------------------------------------------------
+fcitx_profile_clean() {
+  [ -f "$FCITX_PROFILE" ] && grep -q '^Name=hangul' "$FCITX_PROFILE"
+}
+
+# ------------------------------------------------------------------------------
 # fcitx5 TriggerKeys 가 이미 정리됐는지 (Control+space 없고 Hangul 있음) → 0=정리됨
 #   config 파일이 없으면 "정리 필요"(1) 로 간주.
 # ------------------------------------------------------------------------------
@@ -378,6 +391,9 @@ EOF
 # Hyprland 리로드 + 설정 오류 검증
 # ------------------------------------------------------------------------------
 reload_hyprland() {
+  if [ "$HYPR_CHANGED" = 0 ]; then
+    log "Hyprland 설정 변경 없음 — reload 불필요"; return 0
+  fi
   if ! command -v hyprctl >/dev/null 2>&1; then
     warn "hyprctl 없음 (Hyprland 세션 밖) — 재로그인 후 적용됨"; return 0
   fi
@@ -543,12 +559,18 @@ EOF
   fi
 
   # fcitx5 프로필/설정을 안전하게 쓰기 위해 실행 중이면 잠시 종료
-  stop_fcitx5
+  # fcitx5 는 고칠 게 있을 때만 내린다. 편집 없이 껐다 켜면 그 순간 눌려 있던
+  # 키의 뗌이 죽는 프로세스로 흘러가, 컴포지터가 계속 눌린 줄 알고 자동 반복을
+  # 돈다 — Enter 로 이 스크립트를 시작했다면 그게 무한히 입력된다.
+  local fcitx_dirty=0
+  fcitx_profile_clean || fcitx_dirty=1
+  fcitx_triggerkeys_clean || fcitx_dirty=1
+  [ "$fcitx_dirty" = 1 ] && stop_fcitx5
 
   # ----------------------------------------------------------------------------
   # 4) fcitx5 프로필 — hangul 그룹이 없으면 작성
   # ----------------------------------------------------------------------------
-  if [ -f "$FCITX_PROFILE" ] && grep -q '^Name=hangul' "$FCITX_PROFILE"; then
+  if fcitx_profile_clean; then
     log "4) fcitx5 프로필: hangul IM 이미 존재 — 건너뜀"
   else
     backup "$FCITX_PROFILE"
@@ -615,7 +637,11 @@ EOF
   # 9) 적용
   # ----------------------------------------------------------------------------
   reload_hyprland
-  start_fcitx5
+  if [ "$fcitx_dirty" = 1 ]; then
+    start_fcitx5
+  else
+    log "fcitx5 설정 변경 없음 — 재시작 불필요"
+  fi
 
   echo
   log "완료. 완전 반영을 위해 한 번 로그아웃/로그인 권장 (환경변수 적용)."

@@ -246,6 +246,25 @@ FCITX_DIR=~/dotfiles/fcitx5 FRAG_DIR=~/dotfiles/minsoft1115/hypr ./scripts/setup
 hyprctl getoption input:kb_options
 ```
 
+**Enter 가 무한히 반복 입력된다 (해결됨)**
+fcitx5 가 종료·재시작되는 순간 눌려 있던 키가 풀리지 않아서 생긴다. 입력기는 처리한 키를
+가상 키보드로 앱에 되전달하는데, 그 가상 키보드가 사라질 때 눌린 키를 컴포지터가 놓아줄지가
+Hyprland 옵션이고 **기본값이 놓아주지 않음**이다.
+
+```
+input:virtualkeyboard:release_pressed_on_close = false   ← 기본값
+```
+
+`korean-input.lua` 가 이걸 켠다. 가상 키보드가 `Return` 을 쥔 채 사라지게 만들어 재현해 봤다
+(포커스된 창이 받은 줄 수).
+
+| 옵션 | 2.5초 뒤 | 4.5초 뒤 |
+|---|---|---|
+| `false` | 92줄 | 172줄 — 계속 늘어남 (초당 40줄) |
+| `true` | 1줄 | 1줄 — 멈춤 |
+
+스턱이 걸렸을 때는 아무 키나 한 번 누르면(또는 Ctrl-C) 멎는다 — 새 키 이벤트가 그 상태를 푼다.
+
 **한글이 아예 입력되지 않는다**
 로그아웃/로그인을 했는지 확인하고, IM 상태를 점검한다.
 
