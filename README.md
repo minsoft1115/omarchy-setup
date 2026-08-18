@@ -41,12 +41,16 @@ stdin 이 키보드가 아니라서 체크리스트가 그대로 EOF 를 읽고 
 
 ```
 What should be set up? (space toggles, enter confirms)
-> ✓ [installed]      Korean input — right Alt switches 한/영, Omarchy menu opens in Latin
-  ✓ [not installed]  Bash config — Alt-R history picker, fzf search and kill, delta diffs
-  ✓ [installed]      Workspaces bar — hold Super to see which apps are where before switching
+> [ ] [up to date]     Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
+  [✓] [needs update]   Bash config — Alt-R history picker · fzf search and kill · delta diffs
+  [✓] [up to date]     └─ pkg-guards — answer pacman/yay with the omarchy command
+  [✓] [not installed]  Workspaces bar — hold Super to see which apps are where before switching
 ```
 
-- 항목마다 **현재 상태**가 붙는다
+- 상태가 **세 가지**다: `not installed` / `needs update`(저장소가 앞서 있음) / `up to date`.
+  **할 일이 있는 것만 기본 선택**된다 — 이미 최신인 걸 다시 돌릴 이유가 없다
+- `pkg-guards` 는 bash 항목의 **하위 토글**이다. 체크 = "이 파일을 원한다" 라서, 설치돼 있으면
+  체크된 상태로 시작한다 (해제하고 진행하면 회수된다)
 - 고른 순서와 무관하게 **실행 순서는 고정**이다 (한글 → bash → 위젯). 위젯이 셸을 재시작하므로 마지막
 - `pkg-guards` 설치 여부도 **여기서 미리 물어** 하위 스크립트가 도중에 멈추지 않는다
 - 하나가 실패해도 나머지는 계속하고, 끝에 요약이 나온다

@@ -60,46 +60,93 @@ have_tty() {
 # ==============================================================================
 STEP_NAMES=(korean bash widget)
 
+# No commas in these: gum takes the preselected set as one comma-separated
+# string matched against the option text, so a comma inside a label splits it
+# and the match silently fails.
 step_label() {
   case "$1" in
-    korean) echo "Korean input — right Alt switches 한/영, Omarchy menu opens in Latin" ;;
-    bash)   echo "Bash config — Alt-R history picker, fzf search and kill, delta diffs" ;;
+    korean) echo "Korean input — right Alt for 한/영 · Omarchy menu opens in Latin" ;;
+    bash)   echo "Bash config — Alt-R history picker · fzf search and kill · delta diffs" ;;
+    guards) echo "└─ pkg-guards — answer pacman/yay with the omarchy command" ;;
     widget) echo "Workspaces bar — hold Super to see which apps are where before switching" ;;
   esac
 }
 
-# Cheap file checks rather than parsing each script's status output: a one-word
-# hint in a menu is not worth coupling this to another script's wording.
+# Three states, because "installed" alone cannot say whether a git pull left
+# anything to re-apply. Compared against the repo directly rather than by
+# parsing each script's status output: a hint in a menu is not worth coupling
+# this to another script's wording.
+#
+#   not installed / needs update / up to date
+FRAG_DIR="$HOME/.config/minsoft1115/hypr"
+BASH_DST="$HOME/.config/minsoft1115/bash"
+PLUGIN_DST="$HOME/.config/omarchy/plugins/minsoft1115.workspaces"
+
 step_state() {
+  local f name
   case "$1" in
     korean)
-      [ -f "$HOME/.config/minsoft1115/hypr/korean-input.lua" ] \
+      [ -f "$FRAG_DIR/korean-input.lua" ] \
         && grep -qF -e "-- setup-korean:begin" "$HOME/.config/hypr/hyprland.lua" 2>/dev/null \
-        && { echo installed; return; } ;;
+        || { echo "not installed"; return; }
+      # korean-bindings.lua is generated per machine, so only the copied one is
+      # comparable; a stale generated file is caught by re-running the step.
+      cmp -s "$REPO_DIR/hypr/korean-input.lua" "$FRAG_DIR/korean-input.lua" \
+        || { echo "needs update"; return; }
+      ;;
     bash)
       grep -qF -e "# minsoft1115-bash:begin" "$HOME/.bashrc" 2>/dev/null \
-        && { echo installed; return; } ;;
+        || { echo "not installed"; return; }
+      for f in "$REPO_DIR"/bash/*.sh; do
+        name="${f##*/}"
+        # An optional file that was declined is a choice, not a difference.
+        [ -f "$BASH_DST/$name" ] || { [ "$name" = "pkg-guards.sh" ] && continue
+                                      echo "needs update"; return; }
+        cmp -s "$f" "$BASH_DST/$name" || { echo "needs update"; return; }
+      done
+      ;;
+    guards)
+      [ -f "$BASH_DST/pkg-guards.sh" ] || { echo "not installed"; return; }
+      cmp -s "$REPO_DIR/bash/pkg-guards.sh" "$BASH_DST/pkg-guards.sh" \
+        || { echo "needs update"; return; }
+      ;;
     widget)
-      [ -f "$HOME/.config/omarchy/plugins/minsoft1115.workspaces/manifest.json" ] \
-        && { echo installed; return; } ;;
+      [ -f "$PLUGIN_DST/manifest.json" ] || { echo "not installed"; return; }
+      diff -r -q "$REPO_DIR/minsoft1115.workspaces" "$PLUGIN_DST" >/dev/null 2>&1 \
+        || { echo "needs update"; return; }
+      cmp -s "$REPO_DIR/hypr/workspace-peek.lua" "$FRAG_DIR/workspace-peek.lua" \
+        || { echo "needs update"; return; }
+      ;;
   esac
-  echo "not installed"
+  echo "up to date"
+}
+
+# The command a step is, as a string: run it, or print it for --dry-run. One
+# definition means the dry run cannot drift from what actually happens.
+step_cmd() {
+  case "$1" in
+    korean) echo "scripts/setup-korean.sh" ;;
+    bash)   echo "scripts/install-bash-config.sh install $GUARDS_FLAG" ;;
+    widget) echo "scripts/install-workspaces-widget.sh install" ;;
+  esac
 }
 
 step_run() {
+  # shellcheck disable=SC2046
+  ( cd "$REPO_DIR" && bash $(step_cmd "$1") )
+}
+
+step_remove_cmd() {
   case "$1" in
-    korean) bash "$REPO_DIR/scripts/setup-korean.sh" ;;
-    bash)   bash "$REPO_DIR/scripts/install-bash-config.sh" install $GUARDS_FLAG ;;
-    widget) bash "$REPO_DIR/scripts/install-workspaces-widget.sh" install ;;
+    korean) echo "scripts/setup-korean.sh remove" ;;
+    bash)   echo "scripts/install-bash-config.sh remove" ;;
+    widget) echo "scripts/install-workspaces-widget.sh remove" ;;
   esac
 }
 
 step_remove() {
-  case "$1" in
-    korean) bash "$REPO_DIR/scripts/setup-korean.sh" remove ;;
-    bash)   bash "$REPO_DIR/scripts/install-bash-config.sh" remove ;;
-    widget) bash "$REPO_DIR/scripts/install-workspaces-widget.sh" remove ;;
-  esac
+  # shellcheck disable=SC2046
+  ( cd "$REPO_DIR" && bash $(step_remove_cmd "$1") )
 }
 
 # ==============================================================================
@@ -207,33 +254,70 @@ elif [ -n "$ONLY" ]; then
     esac
   done
 else
-  # The menu shows a sentence per step; the name is recovered from the position,
+  # The menu shows a sentence per row; the name is recovered from the position,
   # so the labels never have to double as identifiers.
+  #
+  # guards rides under bash as a sub-row rather than a question asked afterwards.
+  # It is a state toggle, not an action: checked means "I want this file", so it
+  # starts checked whenever it is installed, while the steps above start checked
+  # only when there is something to do.
+  menu_names=()
   labels=()
+  preselect=()
+  todo=0
   for name in "${STEP_NAMES[@]}"; do
-    labels+=("$(printf '%-14s %s' "[$(step_state "$name")]" "$(step_label "$name")")")
+    state="$(step_state "$name")"
+    menu_names+=("$name")
+    labels+=("$(printf '%-14s %s' "[$state]" "$(step_label "$name")")")
+    [ "$state" = "up to date" ] || { preselect+=("${labels[-1]}"); todo=$((todo + 1)); }
+
+    if [ "$name" = bash ] && [ "$REMOVE" = 0 ]; then
+      state="$(step_state guards)"
+      menu_names+=(guards)
+      labels+=("$(printf '%-14s %s' "[$state]" "$(step_label guards)")")
+      [ "$state" = "not installed" ] || preselect+=("${labels[-1]}")
+    fi
   done
+
+  if [ "$REMOVE" = 1 ]; then
+    preselect=()
+  elif [ "$todo" -eq 0 ]; then
+    MENU_HEADER="Everything is up to date — pick anything to re-apply"
+  fi
 
   if command -v gum >/dev/null 2>&1 && have_tty; then
     # Options go in as arguments, not on stdin: stdin is the terminal here, and
     # gum needs it for the keyboard.
+    # Bracketed prefixes rather than gum's default dot/check: a lone ✓ against a
+    # • is easy to miss at a glance, and a box reads as a checkbox even where the
+    # terminal renders both in the same color.
+    #
     # --selected is left off entirely when nothing should start selected;
     # passing it empty is not the same thing to gum.
-    gum_args=(choose --no-limit --header="$MENU_HEADER")
-    [ -n "$PRESELECT" ] && gum_args+=(--selected="$PRESELECT")
+    gum_args=(choose --no-limit --header="$MENU_HEADER"
+              --selected-prefix="[✓] " --unselected-prefix="[ ] " --cursor-prefix="[ ] "
+              --selected.foreground="2" --cursor.foreground="4")
+    if [ "${#preselect[@]}" -gt 0 ]; then
+      gum_args+=(--selected="$(printf '%s,' "${preselect[@]}" | sed 's/,$//')")
+    fi
     chosen="$(gum "${gum_args[@]}" "${labels[@]}" </dev/tty)" || chosen=""
   elif have_tty; then
     warn "gum not available — asking one by one"
     chosen=""
     for i in "${!labels[@]}"; do
-      if [ "$REMOVE" = 1 ]; then
-        printf 'remove? %s  [y/N] ' "${labels[$i]}" >/dev/tty
-        read -r reply </dev/tty || reply=""
-        case "$reply" in [yY]*) chosen="$chosen${labels[$i]}"$'\n' ;; esac
-      else
+      # Default follows the same rule as the checklist's preselection.
+      want=no
+      for pre in ${preselect[@]+"${preselect[@]}"}; do
+        [ "$pre" = "${labels[$i]}" ] && want=yes
+      done
+      if [ "$want" = yes ]; then
         printf '%s  [Y/n] ' "${labels[$i]}" >/dev/tty
         read -r reply </dev/tty || reply=""
         case "$reply" in [nN]*) ;; *) chosen="$chosen${labels[$i]}"$'\n' ;; esac
+      else
+        printf '%s  [y/N] ' "${labels[$i]}" >/dev/tty
+        read -r reply </dev/tty || reply=""
+        case "$reply" in [yY]*) chosen="$chosen${labels[$i]}"$'\n' ;; esac
       fi
     done
   else
@@ -245,9 +329,24 @@ else
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     for i in "${!labels[@]}"; do
-      [ "$line" = "${labels[$i]}" ] && selected+=("${STEP_NAMES[$i]}")
+      [ "$line" = "${labels[$i]}" ] && selected+=("${menu_names[$i]}")
     done
   done <<<"$chosen"
+
+  # The sub-row is an answer, not a step: it decides the flag the bash step runs
+  # with and then leaves the list.
+  if [ "$GUARDS_ANSWERED" = 0 ]; then
+    case " ${selected[*]} " in
+      *" bash "*)
+        case " ${selected[*]} " in
+          *" guards "*) GUARDS_FLAG="--with-optional" ;;
+          *)            GUARDS_FLAG="--no-optional" ;;
+        esac
+        GUARDS_ANSWERED=1
+        ;;
+    esac
+  fi
+  selected=(${selected[@]/guards})
 fi
 
 # Fixed order, whatever order they came back in. Removing goes the other way,
@@ -268,32 +367,14 @@ done
 selected=("${ordered[@]}")
 
 # ==============================================================================
-# The one question a sub-script would otherwise stop to ask
-# ==============================================================================
-if [ "$GUARDS_ANSWERED" = 0 ] && [ "$REMOVE" = 0 ]; then
-  case " ${selected[*]} " in
-    *" bash "*)
-      if command -v gum >/dev/null 2>&1 && have_tty; then
-        if gum confirm "Also guard pacman and yay?
-Answers them with the matching omarchy command instead of running. Omarchy ships
-its own version of these, so this is optional." </dev/tty >/dev/tty 2>&1; then
-          GUARDS_FLAG="--with-optional"
-        else
-          GUARDS_FLAG="--no-optional"
-        fi
-      fi
-      ;;
-  esac
-fi
-
-# ==============================================================================
 # Run
 # ==============================================================================
 results=()
 for name in "${selected[@]}"; do
   head_ "$(step_label "$name")"
   if [ "$DRY_RUN" = 1 ]; then
-    log "dry run — would $VERB the $name step"
+    if [ "$REMOVE" = 1 ]; then log "dry run — would run: $(step_remove_cmd "$name")"
+    else                       log "dry run — would run: $(step_cmd "$name")"; fi
     results+=("$name skipped (dry run)")
     continue
   fi
