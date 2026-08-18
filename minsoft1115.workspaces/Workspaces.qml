@@ -94,14 +94,21 @@ BarWidget {
     root.bar.run("hyprctl dispatch " + Util.shellQuote("hl.dsp.focus({ workspace = \"" + id + "\" })"))
   }
 
+  // CHANGE 1: a gap in front of the first cell. Upstream sits flush against
+  // whatever precedes it in the bar section (the Omarchy menu), which reads as
+  // cramped now that the focused cell carries a filled box right up to its
+  // edge. Goes through Style.space so it tracks the theme's spacing scale like
+  // the trailing gap already does.
+  readonly property real leadingGap: root.vertical ? 0 : Style.space(10)
   readonly property real trailingGap: root.vertical ? 0 : Style.spaceReal(1.5)
 
-  implicitWidth: grid.implicitWidth + trailingGap
+  implicitWidth: grid.implicitWidth + leadingGap + trailingGap
   implicitHeight: grid.implicitHeight
 
   GridLayout {
     id: grid
     anchors.fill: parent
+    anchors.leftMargin: root.leadingGap
     anchors.rightMargin: root.trailingGap
     columns: root.vertical ? 1 : root.workspaceIds().length
     columnSpacing: root.vertical ? 0 : Style.space(1)
@@ -119,10 +126,10 @@ BarWidget {
         readonly property bool focused: Hyprland.focusedWorkspace !== null && Hyprland.focusedWorkspace.id === modelData
 
         bar: root.bar
-        // CHANGE 1: always draw the number, focused or not. 10 renders as "0"
+        // CHANGE 2: always draw the number, focused or not. 10 renders as "0"
         // to match the SUPER+0 keybinding.
         text: modelData === 10 ? "0" : String(modelData)
-        // CHANGE 2: hide WidgetButton's built-in label and paint the number
+        // CHANGE 3: hide WidgetButton's built-in label and paint the number
         // below instead. The built-in label exposes family and pixel size but
         // no weight, and the focused number needs to be bold. Sizing, hit
         // testing, and tooltips still come from WidgetButton.
@@ -134,7 +141,7 @@ BarWidget {
         fixedHeight: root.barSize
         onPressed: function() { root.focusWorkspace(modelData) }
 
-        // CHANGE 3: the focus box.
+        // CHANGE 4: the focus box.
         //   WidgetButton has no background of its own (just a Text and a
         //   MouseArea). Children added at the call site are appended last and
         //   paint on top, so the box needs z: -1 to sit behind the number.
@@ -155,7 +162,7 @@ BarWidget {
           }
         }
 
-        // CHANGE 4: the number itself, drawn above the focus box. Declared
+        // CHANGE 5: the number itself, drawn above the focus box. Declared
         // after the box so it paints on top; the box sits at z: -1.
         Text {
           anchors.centerIn: parent

@@ -138,6 +138,7 @@ hypr/workspace-peek.lua     Hyprland 키 바인딩
 
 | 값 | 현재 | 하는 일 |
 |---|---|---|
+| `leadingGap` | `space(10)` | 첫 칸 앞 여백 (바에서 왼쪽 요소와의 간격) |
 | `focusRadius` | `space(2)` | 포커스 박스 모서리 둥글기 (`0` 이면 각짐) |
 | `focusInsetY` / `focusInsetX` | `space(5)` / `space(1)` | 포커스 박스 여백 (= 박스 크기) |
 | `focusFillColor` | `bar.barForeground` | 포커스 박스 채움색 |
