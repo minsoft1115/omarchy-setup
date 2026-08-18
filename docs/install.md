@@ -39,9 +39,9 @@ curl | bash
 
 ```
 What should be set up? (space toggles, enter confirms)
-> [ ] [up to date]     Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
-  [✓] [needs update]   Bash config — Alt-R history picker · fzf search and kill · delta diffs
-  [✓] [not installed]  Workspaces bar — hold Super to see which apps are where before switching
+> [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
+  [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+  [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
 
 - 상태는 **세 가지**다.
@@ -49,10 +49,13 @@ What should be set up? (space toggles, enter confirms)
   | 상태 | 뜻 | 기본 선택 |
   |---|---|---|
   | `not installed` | 설치된 적 없음 | ✓ |
-  | `needs update` | 설치돼 있지만 저장소 쪽이 다름 (`git pull` 뒤) | ✓ |
-  | `up to date` | 저장소와 같음 | — |
+  | `installed / outdated` | 깔려 있지만 저장소 쪽이 다름 (`git pull` 뒤) | ✓ |
+  | `installed / latest` | 깔려 있고 저장소와 같음 | — |
 
-  전부 `up to date` 면 헤더가 `Everything is up to date — pick anything to re-apply` 로 바뀐다.
+  앞쪽이 "깔려 있나", 뒤쪽이 "최신인가" 다. 한때 뒤쪽만 말했더니(`up to date`) 설치를 하고
+  나서도 라벨이 그대로라, 방금 한 설치가 아무 일도 안 한 것처럼 읽혔다.
+
+  전부 최신이면 헤더가 `Everything is installed and current — pick anything to re-apply` 로 바뀐다.
 
   판정은 저장소 파일과 설치본을 **바이트 단위로 비교**한다. 각 스크립트의 `status` 출력을
   파싱하지 않는다 — 메뉴에 한 단어 띄우자고 남의 문구에 묶일 이유가 없다.
@@ -68,14 +71,17 @@ What should be set up? (space toggles, enter confirms)
   기본값에서 나오므로 저장소 쪽에 대응하는 원본이 없다. 스텝을 다시 돌리면 어차피 다시 만든다.
 
   선택 파일이 빠져 있는 것은 **차이가 아니라 선택**이라, `bash-config` 는 `pkg-guards.sh` 가
-  없다고 `needs update` 가 되지 않는다.
+  없다고 `installed / outdated` 가 되지 않는다.
 
 - **모든 체크박스가 같은 뜻이다** — "이번에 실행한다". 한때 선택 파일 `pkg-guards` 를
   하위 행으로 같이 띄우고 "이 파일을 원한다" 라는 다른 의미를 줬는데, 한 모양에 두 의미는
   하나가 많다: 전부 설치된 머신에서 그 행만 체크된 채로 떠서 왜 그런지 묻게 만들었다
 - 체크 표시는 `[✓]` / `[ ]` 로 그린다. gum 기본값인 `✓` 와 `•` 는 한눈에 구분되지 않는다
-- 라벨에 **콤마를 쓰면 안 된다.** gum 은 미리 선택할 항목을 콤마로 구분된 한 문자열로 받아
-  옵션 텍스트와 대조하므로, 라벨 안의 콤마가 그 목록을 쪼개 매칭이 조용히 실패한다
+- 라벨과 상태 문자열에 **콤마를 쓰면 안 된다.** gum 은 미리 선택할 항목을 콤마로 구분된 한
+  문자열로 받아 옵션 텍스트와 대조하므로, 그 안의 콤마가 목록을 쪼개 매칭이 조용히 실패한다.
+  상태를 `installed, latest` 가 아니라 `installed / latest` 로 쓰는 이유다
+- 상태 칸은 **고정 폭으로 정렬**한다. 가운뎃점(`·`) 같은 멀티바이트 문자를 쓰면 `printf` 가
+  바이트로 세어 한 칸씩 어긋나므로, 구분자는 ASCII 로 둔다
 - 고른 순서와 무관하게 **실행 순서는 고정**이다: 한글 → bash → 위젯.
   위젯이 `omarchy restart shell` 로 바를 재시작하므로 마지막이다
 - `gum` 이 없으면 항목별 `[Y/n]` 로 묻는다
@@ -129,9 +135,9 @@ What should be set up? (space toggles, enter confirms)
 ```
 $ ./install.sh --list
 name         state          what it does
-korean       [up to date]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
-bash-config  [needs update] Bash config — Alt-R history picker · fzf search and kill · delta diffs
-workspaces   [up to date]   Workspaces bar — hold Super to see which apps are where before switching
+korean       [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
+bash-config  [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+workspaces   [installed / latest]   Workspaces bar — hold Super to see which apps are where before switching
 
 use with: install.sh --only korean,bash-config,workspaces
 ```

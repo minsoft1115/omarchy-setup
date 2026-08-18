@@ -41,19 +41,20 @@ stdin 이 키보드가 아니라서 체크리스트가 그대로 EOF 를 읽고 
 
 ```
 What should be set up? (space toggles, enter confirms)
-> [ ] [up to date]     Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
-  [✓] [needs update]   Bash config — Alt-R history picker · fzf search and kill · delta diffs
-  [✓] [not installed]  Workspaces bar — hold Super to see which apps are where before switching
+> [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
+  [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+  [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
 
-- 상태가 **세 가지**다. 저장소 파일과 설치본을 **바이트 단위로 비교**해서 판정한다 —
-  `git pull` 로 저장소가 앞섰거나 소스를 직접 고쳤으면 `needs update` 가 된다
+- 상태가 **세 가지**다. 앞은 "깔려 있나", 뒤는 "최신인가" 를 말한다. 판정은 저장소 파일과
+  설치본을 **바이트 단위로 비교**한다 — `git pull` 로 저장소가 앞섰거나 소스를 직접 고쳤으면
+  `outdated` 가 된다
 
   | 상태 | 뜻 | 기본 선택 |
   |---|---|---|
   | `not installed` | 설치된 적 없음 | ✓ |
-  | `needs update` | 설치본이 저장소와 다름 | ✓ |
-  | `up to date` | 저장소와 같음 | — |
+  | `installed / outdated` | 깔려 있지만 저장소와 다름 | ✓ |
+  | `installed / latest` | 깔려 있고 저장소와 같음 | — |
 
   **할 일이 있는 것만 기본 선택**된다. 이미 최신인 걸 다시 돌릴 이유가 없다
 - 모든 체크박스가 같은 뜻이다 — **"이번에 실행한다"**. 선택 파일 `pkg-guards` 는 목록에

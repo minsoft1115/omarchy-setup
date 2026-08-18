@@ -77,7 +77,12 @@ step_label() {
 # parsing each script's status output: a hint in a menu is not worth coupling
 # this to another script's wording.
 #
-#   not installed / needs update / up to date
+#   "not installed" / "installed / outdated" / "installed / latest"
+#
+# The first half answers "is it there", the second "is it current". Saying only
+# the second one made an install look like it did nothing: a step that was
+# already current still read "up to date" afterwards, with no word for the fact
+# that it is installed at all.
 FRAG_DIR="$HOME/.config/minsoft1115/hypr"
 BASH_DST="$HOME/.config/minsoft1115/bash"
 PLUGIN_DST="$HOME/.config/omarchy/plugins/minsoft1115.workspaces"
@@ -92,7 +97,7 @@ step_state() {
       # korean-bindings.lua is generated per machine, so only the copied one is
       # comparable; a stale generated file is caught by re-running the step.
       cmp -s "$REPO_DIR/hypr/korean-input.lua" "$FRAG_DIR/korean-input.lua" \
-        || { echo "needs update"; return; }
+        || { echo "installed / outdated"; return; }
       ;;
     bash-config)
       grep -qF -e "# minsoft1115-bash:begin" "$HOME/.bashrc" 2>/dev/null \
@@ -101,19 +106,19 @@ step_state() {
         name="${f##*/}"
         # An optional file that was declined is a choice, not a difference.
         [ -f "$BASH_DST/$name" ] || { [ "$name" = "pkg-guards.sh" ] && continue
-                                      echo "needs update"; return; }
-        cmp -s "$f" "$BASH_DST/$name" || { echo "needs update"; return; }
+                                      echo "installed / outdated"; return; }
+        cmp -s "$f" "$BASH_DST/$name" || { echo "installed / outdated"; return; }
       done
       ;;
     workspaces)
       [ -f "$PLUGIN_DST/manifest.json" ] || { echo "not installed"; return; }
       diff -r -q "$REPO_DIR/minsoft1115.workspaces" "$PLUGIN_DST" >/dev/null 2>&1 \
-        || { echo "needs update"; return; }
+        || { echo "installed / outdated"; return; }
       cmp -s "$REPO_DIR/hypr/workspace-peek.lua" "$FRAG_DIR/workspace-peek.lua" \
-        || { echo "needs update"; return; }
+        || { echo "installed / outdated"; return; }
       ;;
   esac
-  echo "up to date"
+  echo "installed / latest"
 }
 
 # The command a step is, as a string: run it, or print it for --dry-run. One
@@ -218,9 +223,9 @@ done
 if [ "$LIST_ONLY" = 1 ]; then
   # The first column is the name --only takes; without saying so it reads as
   # noise next to the sentence that follows it.
-  printf '%-12s %-14s %s\n' "name" "state" "what it does"
+  printf '%-12s %-22s %s\n' "name" "state" "what it does"
   for name in "${STEP_NAMES[@]}"; do
-    printf '%-12s %-14s %s\n' "$name" "[$(step_state "$name")]" "$(step_label "$name")"
+    printf '%-12s %-22s %s\n' "$name" "[$(step_state "$name")]" "$(step_label "$name")"
   done
   printf '\nuse with: %s --only %s\n' "${SELF##*/}" "$(printf %s "${STEP_NAMES[*]}" | tr ' ' ',')"
   exit 0
@@ -267,14 +272,14 @@ else
   for name in "${STEP_NAMES[@]}"; do
     state="$(step_state "$name")"
     menu_names+=("$name")
-    labels+=("$(printf '%-14s %s' "[$state]" "$(step_label "$name")")")
-    [ "$state" = "up to date" ] || { preselect+=("${labels[-1]}"); todo=$((todo + 1)); }
+    labels+=("$(printf '%-22s %s' "[$state]" "$(step_label "$name")")")
+    [ "$state" = "installed / latest" ] || { preselect+=("${labels[-1]}"); todo=$((todo + 1)); }
   done
 
   if [ "$REMOVE" = 1 ]; then
     preselect=()
   elif [ "$todo" -eq 0 ]; then
-    MENU_HEADER="Everything is up to date — pick anything to re-apply"
+    MENU_HEADER="Everything is installed and current — pick anything to re-apply"
   fi
 
   if command -v gum >/dev/null 2>&1 && have_tty; then
