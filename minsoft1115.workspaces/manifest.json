@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "minsoft1115.workspaces",
+  "name": "Workspaces (minsoft1115)",
+  "version": "1.0.0",
+  "author": "minsoft1115",
+  "description": "Workspace indicators — focused workspace shown as a number in a filled pill",
+  "kinds": [
+    "bar-widget",
+    "service"
+  ],
+  "entryPoints": {
+    "barWidget": "Workspaces.qml",
+    "service": "PeekService.qml"
+  },
+  "barWidget": {
+    "displayName": "Workspaces (minsoft1115)",
+    "description": "Workspace indicators — focused workspace shown as a number in a filled pill",
+    "category": "Compositor",
+    "allowMultiple": false
+  },
+  "omarchy": {
+    "clonedFrom": "omarchy.workspaces"
+  }
+}

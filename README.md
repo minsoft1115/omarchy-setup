@@ -8,15 +8,7 @@
 
 ---
 
-## 스크립트
-
-| 스크립트 | 하는 일 | 문서 |
-|---|---|---|
-| `setup-korean.sh` | 한글 입력(fcitx5 + hangul), 오른쪽 Alt = 한/영 | [문서](docs/setup-korean.md) |
-
----
-
-### setup-korean.sh
+## setup-korean.sh
 
 fcitx5 + hangul 을 설치·설정해서 한글 입력을 쓸 수 있게 만든다.
 오른쪽 Alt 를 한/영 키로 잡고, tmux 와 충돌하는 `Control+space` 트리거를 없애고,
@@ -36,16 +28,39 @@ bash /tmp/setup-korean.sh --light
 
 ---
 
-## 전부 clone 해서 쓰기
+## install-workspaces-widget.sh
+
+바의 워크스페이스 인디케이터를 포커스된 워크스페이스도 **숫자로** 보여 주는 버전으로 바꾸고,
+**Super 를 누르고 있으면** 각 워크스페이스에 뭐가 떠 있는지 보여 주는 팝업을 추가한다.
+
+![워크스페이스 위젯과 Super 홀드 미리보기](screenshots/workspaces-widget.png)
+
+바에서 1번은 포커스(반전된 숫자), 2번은 창 있음, 3~5번은 비어 있어 흐리게 나온다.
+Super 를 누르고 있으면 아래 팝업이 떠서 각 워크스페이스의 창 목록을 보여 준다.
+
+저장소를 clone 한 뒤 실행한다 (Quickshell 플러그인과 Hyprland 키 바인딩을 함께 설치한다):
 
 ```bash
 git clone https://github.com/minsoft1115/omarchy-setup.git
 cd omarchy-setup
-./setup-korean.sh
+./install-workspaces-widget.sh install
 ```
 
-실행 전에 내용을 확인하고 싶다면 (설정 파일을 고치고 sudo 를 쓸 수 있다):
+되돌리려면:
 
 ```bash
-less setup-korean.sh
+./install-workspaces-widget.sh revert
 ```
+
+자세한 내용은 [docs/workspaces-widget.md](docs/workspaces-widget.md) 참고.
+
+---
+
+## 참고 문서
+
+스크립트는 아니고, Omarchy 가 어떻게 굴러가는지 조사해 둔 기록.
+
+| 문서 | 내용 |
+|---|---|
+| [docs/quickshell-workspaces.md](docs/quickshell-workspaces.md) | Omarchy 4.0 바의 워크스페이스 인디케이터가 그려지는 방식 — 데이터 출처, 표시 규칙, 클릭 동작, 커스터마이즈 지점 |
+| [docs/workspace-peek-design.md](docs/workspace-peek-design.md) | Super 홀드 미리보기의 설계와 실측 기록 — 키 바인딩 동작, release 유실, 팝업 크기 계산에서 틀렸던 것들 |
