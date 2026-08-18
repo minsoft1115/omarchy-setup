@@ -252,7 +252,7 @@ PRESSED  → show
 
 | 방어선 | 역할 |
 |---|---|
-| 250ms 지연 | 가장 빠른 코드 차단 (실측 간격 150~230ms 라 이것만으로는 부족하다) |
+| 500ms 지연 | 코드 차단 (Super 부터 다음 키까지 실측 간격이 150~230ms 라 대부분 여기서 걸린다) |
 | **키 조합 감지** | Super 를 쥔 채 다른 키가 내려오면 즉시 취소 — **주 방어선** |
 | 컴포지터 이동 감지 | 워크스페이스·활성 창이 바뀌면 닫기 (키와 무관한 이동도 받는다) |
 | 5초 안전 타이머 | 위 셋이 놓친 것의 상한 |
@@ -414,7 +414,7 @@ hypr/workspace-peek.lua   Hyprland 바인딩 + 키 조합 감지 훅
 
 | 값 | 위치 | 현재 |
 |---|---|---|
-| 팝업 지연 | `PeekService.openDelayMs` | 250ms |
+| 팝업 지연 | `PeekService.openDelayMs` | 500ms |
 | 안전 타이머 | `PeekService.safetyTimeoutMs` | 5000ms |
 | 제목 최대 폭 | `PeekCard.titleMaxWidth` | `Style.space(460)` |
 | 아이콘 크기 | `PeekCard.iconSize` | `Style.space(14)` |

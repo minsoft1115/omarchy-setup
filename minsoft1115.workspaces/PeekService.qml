@@ -20,12 +20,11 @@ Item {
 
   // Super is a modifier, so the shortcut also fires when Super is pressed as
   // the start of SUPER+X. Measured gap from Super down to the next key was
-  // 150-230ms, which this delay does not clear on its own — it does not have
-  // to. The second key of a chord that slips past it arrives as a cancel and
-  // drops the pending open before it can fire. The delay only has to filter
-  // the fastest chords; keeping it short is what makes a deliberate hold feel
-  // immediate.
-  readonly property int openDelayMs: 250
+  // 150-230ms, so this clears an ordinary chord on its own; anything faster
+  // than the delay arrives as a cancel and drops the pending open before it can
+  // fire. Long enough that a chord never flashes the overlay, short enough that
+  // a deliberate hold does not feel like waiting.
+  readonly property int openDelayMs: 500
 
   // Hyprland does not deliver the shortcut's release event if another key was
   // pressed during the hold — verified on 0.56.2, both through exec_cmd binds

@@ -94,22 +94,22 @@ BarWidget {
     root.bar.run("hyprctl dispatch " + Util.shellQuote("hl.dsp.focus({ workspace = \"" + id + "\" })"))
   }
 
-  // CHANGE 1: a gap in front of the first cell. Upstream sits flush against
-  // whatever precedes it in the bar section (the Omarchy menu), which reads as
-  // cramped now that the focused cell carries a filled box right up to its
-  // edge. Goes through Style.space so it tracks the theme's spacing scale like
-  // the trailing gap already does.
-  readonly property real leadingGap: root.vertical ? 0 : Style.space(10)
-  readonly property real trailingGap: root.vertical ? 0 : Style.spaceReal(1.5)
+  // CHANGE 1: room on both sides of the row. Upstream sits flush against
+  // whatever precedes it in the bar section (the Omarchy menu) and leaves only a
+  // hairline after, which reads as cramped now that the focused cell carries a
+  // filled box right up to its edge. The same value on both sides keeps the row
+  // centred between its neighbours. Goes through Style.space so it tracks the
+  // theme's spacing scale.
+  readonly property real sideGap: root.vertical ? 0 : Style.space(5)
 
-  implicitWidth: grid.implicitWidth + leadingGap + trailingGap
+  implicitWidth: grid.implicitWidth + sideGap * 2
   implicitHeight: grid.implicitHeight
 
   GridLayout {
     id: grid
     anchors.fill: parent
-    anchors.leftMargin: root.leadingGap
-    anchors.rightMargin: root.trailingGap
+    anchors.leftMargin: root.sideGap
+    anchors.rightMargin: root.sideGap
     columns: root.vertical ? 1 : root.workspaceIds().length
     columnSpacing: root.vertical ? 0 : Style.space(1)
     rowSpacing: root.vertical ? Style.space(2) : 0

@@ -26,7 +26,7 @@ Super 를 누르고 있으면 각 워크스페이스에 뭐가 떠 있는지 보
 **어느 워크스페이스로 갈지 정하기 전에 거기 뭐가 떠 있는지 보는 것**이 목적이다. 바는 번호만
 보여 주므로 "브라우저가 2번이었나 3번이었나" 를 기억에 의존하게 되는데, 그걸 없앤다.
 
-**Super 를 0.25초 이상 누르고 있으면** 팝업이 뜨고, 떼면 닫힌다.
+**Super 를 0.5초 이상 누르고 있으면** 팝업이 뜨고, 떼면 닫힌다.
 
 ```
 [1]  ▸ alacritty  user@host: ~/projects
@@ -134,7 +134,7 @@ Lua 조각을 `~/.config/hypr/` 가 아니라 별도 네임스페이스에 두�
 
 | 값 | 현재 | 하는 일 |
 |---|---|---|
-| `openDelayMs` | 250ms | 팝업이 뜨기까지 눌러야 하는 시간 |
+| `openDelayMs` | 500ms | 팝업이 뜨기까지 눌러야 하는 시간 |
 | `safetyTimeoutMs` | 5000ms | 닫기 요청이 안 올 때의 강제 자동 닫기 |
 
 ### 팝업 모양 — `minsoft1115.workspaces/PeekCard.qml`
@@ -148,7 +148,7 @@ Lua 조각을 `~/.config/hypr/` 가 아니라 별도 네임스페이스에 두�
 
 | 값 | 현재 | 하는 일 |
 |---|---|---|
-| `leadingGap` | `space(10)` | 첫 칸 앞 여백 (바에서 왼쪽 요소와의 간격) |
+| `sideGap` | `space(5)` | 좌우 여백 (바의 이웃 요소와의 간격) |
 | `focusRadius` | `space(2)` | 포커스 박스 모서리 둥글기 (`0` 이면 각짐) |
 | `focusInsetY` / `focusInsetX` | `space(5)` / `space(1)` | 포커스 박스 여백 (= 박스 크기) |
 | `focusFillColor` | `bar.barForeground` | 포커스 박스 채움색 |
