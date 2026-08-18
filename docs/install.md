@@ -41,7 +41,6 @@ curl | bash
 What should be set up? (space toggles, enter confirms)
 > [ ] [up to date]     Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
   [✓] [needs update]   Bash config — Alt-R history picker · fzf search and kill · delta diffs
-  [✓] [up to date]     └─ pkg-guards — answer pacman/yay with the omarchy command
   [✓] [not installed]  Workspaces bar — hold Super to see which apps are where before switching
 ```
 
@@ -71,9 +70,9 @@ What should be set up? (space toggles, enter confirms)
   선택 파일이 빠져 있는 것은 **차이가 아니라 선택**이라, `bash-config` 는 `pkg-guards.sh` 가
   없다고 `needs update` 가 되지 않는다.
 
-- **`pkg-guards` 는 bash 항목의 하위 토글**로 같이 뜬다. 이건 "할 일" 이 아니라 **원하는
-  상태**라, 설치돼 있으면 체크된 채로 시작한다. 체크하고 진행하면 `--with-optional`,
-  해제하고 진행하면 `--no-optional`(이미 깔린 것도 회수)이 하위 스크립트로 넘어간다
+- **모든 체크박스가 같은 뜻이다** — "이번에 실행한다". 한때 선택 파일 `pkg-guards` 를
+  하위 행으로 같이 띄우고 "이 파일을 원한다" 라는 다른 의미를 줬는데, 한 모양에 두 의미는
+  하나가 많다: 전부 설치된 머신에서 그 행만 체크된 채로 떠서 왜 그런지 묻게 만들었다
 - 체크 표시는 `[✓]` / `[ ]` 로 그린다. gum 기본값인 `✓` 와 `•` 는 한눈에 구분되지 않는다
 - 라벨에 **콤마를 쓰면 안 된다.** gum 은 미리 선택할 항목을 콤마로 구분된 한 문자열로 받아
   옵션 텍스트와 대조하므로, 라벨 안의 콤마가 그 목록을 쪼개 매칭이 조용히 실패한다
@@ -87,11 +86,22 @@ What should be set up? (space toggles, enter confirms)
 [x] no terminal to ask at — say what you want with --all or --only korean,bash-config,workspaces
 ```
 
-### 미리 답해 두는 질문
+### 선택 파일은 그 단계가 스스로 묻는다
 
-[선택 파일 `pkg-guards.sh`](bash-config.md#선택-파일) 는 위 체크리스트의 하위 항목으로 함께
-답한다. 그래야 하위 스크립트가 설치 도중에 멈추지 않는다. `--guards` / `--no-guards` 로
-아예 물어보지 않게 할 수도 있다.
+[`pkg-guards.sh`](bash-config.md#선택-파일) 는 체크리스트에 없다. bash 단계가 도는 중에,
+**그 파일이 아직 없을 때만** 물어본다.
+
+```
+== Bash config — Alt-R history picker · fzf search and kill · delta diffs ==
+[+] packages: installing git-delta bat ripgrep fzf
+┌ Install pkg-guards.sh?
+│ Guards for the Arch package managers, and the sudo alias they need.
+│   Yes    No
+```
+
+이미 쓰고 있으면 묻지 않고 최신으로 갱신한다 — 매번 뜨는 프롬프트는 안 읽고 넘기게 된다.
+비대화형으로 돌리거나 미리 정해 두려면 `--guards` / `--no-guards` 를 쓴다. 빼는 것도
+그쪽이다 (`--only bash-config --no-guards`).
 
 ---
 

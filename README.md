@@ -43,7 +43,6 @@ stdin 이 키보드가 아니라서 체크리스트가 그대로 EOF 를 읽고 
 What should be set up? (space toggles, enter confirms)
 > [ ] [up to date]     Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
   [✓] [needs update]   Bash config — Alt-R history picker · fzf search and kill · delta diffs
-  [✓] [up to date]     └─ pkg-guards — answer pacman/yay with the omarchy command
   [✓] [not installed]  Workspaces bar — hold Super to see which apps are where before switching
 ```
 
@@ -57,9 +56,9 @@ What should be set up? (space toggles, enter confirms)
   | `up to date` | 저장소와 같음 | — |
 
   **할 일이 있는 것만 기본 선택**된다. 이미 최신인 걸 다시 돌릴 이유가 없다
-- `pkg-guards` 는 bash 항목의 **하위 토글**이라 규칙이 다르다. 체크 = "이 파일을 원한다" 라서
-  **설치돼 있으면 체크된 채로**, **설치돼 있지 않으면 체크 없이** 시작한다 (기본은 설치 안 함).
-  체크된 채로 진행하면 설치·갱신되고, 해제하고 진행하면 회수된다
+- 모든 체크박스가 같은 뜻이다 — **"이번에 실행한다"**. 선택 파일 `pkg-guards` 는 목록에
+  없다. bash 단계가 실행되는 도중에, 그 파일이 **아직 없을 때만** 스스로 물어본다.
+  이미 쓰고 있으면 묻지 않고 최신으로 갱신한다 (`--guards` / `--no-guards` 로 미리 답할 수도 있다)
 - 고른 순서와 무관하게 **실행 순서는 고정**이다 (`korean` → `bash-config` → `workspaces`).
   워크스페이스 위젯이 셸을 재시작하므로 마지막이다
 - 하나가 실패해도 나머지는 계속하고, 끝에 요약이 나온다
@@ -144,8 +143,8 @@ Hyprland 설정은 **원본 파일을 고치지 않는다.** Lua 조각을 `~/.c
 | `bash/gdiff.sh` | `gdiff` — `git diff` 를 `delta` 로 넘겨 본다. 인자는 그대로 전달 |
 | `bash/pkg-guards.sh` | **선택** — `pacman`·`yay` 를 실행 대신 안내로 막고(`omarchy pkg add` / `omarchy pkg drop` / `omarchy pkg aur add` / `omarchy update`), `sudo` 뒤에 공백을 둬 `sudo pacman` 도 걸리게 한다 |
 
-`pkg-guards.sh` 는 Omarchy 가 이미 비슷한 것을 갖고 있어서 **설치할지 물어본다** — 이 스크립트를
-직접 돌리면 `gum confirm` 으로, `install.sh` 로 돌리면 체크리스트의 하위 행으로 답한다.
+`pkg-guards.sh` 는 Omarchy 가 이미 비슷한 것을 갖고 있어서 **설치할지 물어본다** (`gum confirm`).
+이미 깔려 있으면 묻지 않고 갱신만 한다.
 Omarchy 기본 rc 다음에 로드되므로 같은 이름이면 이쪽이 이기고, 로드 순서는 **파일명 순**이다.
 의존 도구(`git-delta`, `bat`, `ripgrep`, `fzf`)는 `install` 이 **`omarchy pkg` 로 먼저 깐다.**
 

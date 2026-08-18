@@ -15,8 +15,9 @@
 #   --all              Select everything without asking
 #   --only <a,b,c>     Select these by name (see --list)
 #   --guards / --no-guards
-#                      Answer the optional pkg-guards question up front, so the
-#                      bash step does not stop to ask
+#                      Answer the bash step's optional pkg-guards question in
+#                      advance. Without either, that step asks for itself -- and
+#                      only when the file is not already installed
 #   --dir <path>       Where the repo lives (default ~/.local/share/minsoft1115/omarchy-setup)
 #   --dry-run          Show what would run, run nothing
 #   --purge            With --remove, delete the clone as the very last step
@@ -67,7 +68,6 @@ step_label() {
   case "$1" in
     korean)      echo "Korean input — right Alt for 한/영 · Omarchy menu opens in Latin" ;;
     bash-config) echo "Bash config — Alt-R history picker · fzf search and kill · delta diffs" ;;
-    guards)      echo "└─ pkg-guards — answer pacman/yay with the omarchy command" ;;
     workspaces)  echo "Workspaces bar — hold Super to see which apps are where before switching" ;;
   esac
 }
@@ -104,11 +104,6 @@ step_state() {
                                       echo "needs update"; return; }
         cmp -s "$f" "$BASH_DST/$name" || { echo "needs update"; return; }
       done
-      ;;
-    guards)
-      [ -f "$BASH_DST/pkg-guards.sh" ] || { echo "not installed"; return; }
-      cmp -s "$REPO_DIR/bash/pkg-guards.sh" "$BASH_DST/pkg-guards.sh" \
-        || { echo "needs update"; return; }
       ;;
     workspaces)
       [ -f "$PLUGIN_DST/manifest.json" ] || { echo "not installed"; return; }
@@ -191,7 +186,6 @@ bootstrap() {
 SELECT_ALL=0
 ONLY=""
 GUARDS_FLAG=""
-GUARDS_ANSWERED=0
 LIST_ONLY=0
 DRY_RUN=0
 REMOVE=0
@@ -205,8 +199,8 @@ while [ "$#" -gt 0 ]; do
     --all)         SELECT_ALL=1 ;;
     --only)        shift; ONLY="${1:-}" ;;
     --only=*)      ONLY="${1#*=}" ;;
-    --guards)      GUARDS_FLAG="--with-optional"; GUARDS_ANSWERED=1 ;;
-    --no-guards)   GUARDS_FLAG="--no-optional";   GUARDS_ANSWERED=1 ;;
+    --guards)      GUARDS_FLAG="--with-optional" ;;
+    --no-guards)   GUARDS_FLAG="--no-optional" ;;
     --dir)         shift; CLONE_DIR="${1:-$CLONE_DIR}" ;;
     --dir=*)       CLONE_DIR="${1#*=}" ;;
     --list)        LIST_ONLY=1 ;;
@@ -261,10 +255,11 @@ else
   # The menu shows a sentence per row; the name is recovered from the position,
   # so the labels never have to double as identifiers.
   #
-  # guards rides under bash as a sub-row rather than a question asked afterwards.
-  # It is a state toggle, not an action: checked means "I want this file", so it
-  # starts checked whenever it is installed, while the steps above start checked
-  # only when there is something to do.
+  # Every checkbox here means the same thing: "run this now". The optional
+  # pkg-guards file used to ride along as a sub-row meaning "I want this file",
+  # and two meanings wearing one checkbox is one meaning too many: on a machine
+  # with everything installed it showed up as the only thing selected. The bash
+  # step asks about that file itself, and only when it is not already there.
   menu_names=()
   labels=()
   preselect=()
@@ -274,13 +269,6 @@ else
     menu_names+=("$name")
     labels+=("$(printf '%-14s %s' "[$state]" "$(step_label "$name")")")
     [ "$state" = "up to date" ] || { preselect+=("${labels[-1]}"); todo=$((todo + 1)); }
-
-    if [ "$name" = bash-config ] && [ "$REMOVE" = 0 ]; then
-      state="$(step_state guards)"
-      menu_names+=(guards)
-      labels+=("$(printf '%-14s %s' "[$state]" "$(step_label guards)")")
-      [ "$state" = "not installed" ] || preselect+=("${labels[-1]}")
-    fi
   done
 
   if [ "$REMOVE" = 1 ]; then
@@ -336,21 +324,6 @@ else
       [ "$line" = "${labels[$i]}" ] && selected+=("${menu_names[$i]}")
     done
   done <<<"$chosen"
-
-  # The sub-row is an answer, not a step: it decides the flag the bash step runs
-  # with and then leaves the list.
-  if [ "$GUARDS_ANSWERED" = 0 ]; then
-    case " ${selected[*]} " in
-      *" bash-config "*)
-        case " ${selected[*]} " in
-          *" guards "*) GUARDS_FLAG="--with-optional" ;;
-          *)            GUARDS_FLAG="--no-optional" ;;
-        esac
-        GUARDS_ANSWERED=1
-        ;;
-    esac
-  fi
-  selected=(${selected[@]/guards})
 fi
 
 # Fixed order, whatever order they came back in. Removing goes the other way,
