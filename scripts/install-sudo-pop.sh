@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# install-sudo-pop.sh — build and install sudo-pop, the GUI sudo password popup
+# install-sudo-pop.sh — build and install sudo-pop, the popup for privileged prompts
 # ==============================================================================
 # Usage:
 #   ./scripts/install-sudo-pop.sh status     Show current state (default)
@@ -24,6 +24,7 @@
 #   what --init writes   ~/.config/minsoft1115/bash/sudo-pop.sh   alias sudo='sudo-pop'
 #                        ~/.config/minsoft1115/hypr/sudo-pop.lua  popup window rules
 #                        ~/.config/hypr/hyprland.lua              one require line
+#                        ~/.config/systemd/user/sudo-pop-agent.service  the polkit agent
 #
 # Why a clone and not the upstream curl one-liner:
 #   Building takes minutes, so "is it current" has to be answerable without
@@ -71,6 +72,9 @@ REV_FILE="$STATE_DIR/sudo-pop.rev"
 CONF_DIR="${CONF_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}}"
 BASH_SNIPPET="$CONF_DIR/minsoft1115/bash/sudo-pop.sh"
 HYPR_SNIPPET="$CONF_DIR/minsoft1115/hypr/sudo-pop.lua"
+# The polkit agent runs as a systemd user unit; --init installs and enables it.
+UNIT="sudo-pop-agent.service"
+UNIT_FILE="$CONF_DIR/systemd/user/$UNIT"
 HYPR_MAIN="${HYPR_MAIN:-$CONF_DIR/hypr/hyprland.lua}"
 HYPR_BEGIN="-- sudo-pop:begin"
 HYPR_END="-- sudo-pop:end"
@@ -115,7 +119,7 @@ builder() {
 # ==============================================================================
 have_clone()  { [ -d "$SRC_DIR/.git" ]; }
 installed()   { [ -x "$BIN" ]; }
-conf_present() { [ -f "$BASH_SNIPPET" ] && [ -f "$HYPR_SNIPPET" ]; }
+conf_present() { [ -f "$BASH_SNIPPET" ] && [ -f "$HYPR_SNIPPET" ] && [ -f "$UNIT_FILE" ]; }
 
 hypr_block_present() {
   [ -f "$HYPR_MAIN" ] && grep -qF -e "$HYPR_BEGIN" "$HYPR_MAIN"
@@ -123,6 +127,20 @@ hypr_block_present() {
 
 on_path() {
   case ":${PATH:-}:" in *":$PREFIX:"*) return 0 ;; *) return 1 ;; esac
+}
+
+# True when the Omarchy shell's own polkit agent holds this session's seat, in
+# which case sudo-pop's agent is installed but stays dormant (one agent per
+# session). Its plugin lives inside the shell, so it is not a process to pgrep.
+omarchy_polkit_enabled() {
+  command -v omarchy-plugin-list >/dev/null 2>&1 || return 1
+  if command -v jq >/dev/null 2>&1; then
+    [ "$(omarchy-plugin-list --json 2>/dev/null \
+         | jq -r '.[]|select(.id=="omarchy.polkit")|.enabled' 2>/dev/null)" = "true" ]
+  else
+    omarchy-plugin-list --json 2>/dev/null | tr -d ' \n' \
+      | grep -q '"id":"omarchy.polkit","[^}]*"enabled":true'
+  fi
 }
 
 # Commit currently checked out, and the one the installed binary came from.
@@ -206,6 +224,16 @@ do_install() {
   command -v hyprctl >/dev/null 2>&1 \
     || warn "hyprctl not found — the popup window rules are Hyprland-specific"
 
+  if ! systemctl --user is-active --quiet "$UNIT" 2>/dev/null; then
+    if omarchy_polkit_enabled; then
+      warn "the polkit agent is installed but not running: omarchy.polkit holds the seat."
+      warn "to hand it to sudo-pop:  omarchy plugin disable omarchy.polkit && $BIN --init"
+      warn "(the sudo router works regardless; this only affects run0 and other polkit prompts)"
+    else
+      warn "the polkit agent unit is not active — check: systemctl --user status $UNIT"
+    fi
+  fi
+
   log "done. new shells get it; for this one: source ~/.bashrc"
   log "to undo: $(basename "$0") remove"
 }
@@ -226,6 +254,15 @@ remove_by_hand() {
     log "deleted: $BIN"
   else
     log "no binary at $BIN — removing its files directly"
+  fi
+
+  # The systemd user unit --init enables. Left behind it would keep restarting
+  # on a binary that is gone (Restart=on-failure), so stop and remove it.
+  systemctl --user disable --now "$UNIT" >/dev/null 2>&1 || true
+  if [ -f "$UNIT_FILE" ]; then
+    rm -f "$UNIT_FILE"
+    log "deleted: $UNIT_FILE"
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
   fi
 
   local f
@@ -317,6 +354,15 @@ do_status() {
   row "shell alias" "$BASH_SNIPPET $([ -f "$BASH_SNIPPET" ] && echo '(present)' || echo '(missing)')"
   row "window rules" "$HYPR_SNIPPET $([ -f "$HYPR_SNIPPET" ] && echo '(present)' || echo '(missing)')\
 $(hypr_block_present && echo ', required by hyprland.lua' || echo ', NOT required by hyprland.lua')"
+
+  row "agent" "$UNIT ($(systemctl --user is-active "$UNIT" 2>/dev/null || echo inactive) / $(systemctl --user is-enabled "$UNIT" 2>/dev/null || echo disabled))"
+  if command -v omarchy-plugin-list >/dev/null 2>&1; then
+    if omarchy_polkit_enabled; then
+      row "omarchy.polkit" "enabled — it holds the polkit seat, so the agent stays dormant"
+    else
+      row "omarchy.polkit" "disabled — the sudo-pop agent can hold the seat"
+    fi
+  fi
 
   local cc_ok
   cc_ok="$( { command -v cc >/dev/null 2>&1 || command -v gcc >/dev/null 2>&1; } && echo ok || echo MISSING)"

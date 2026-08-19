@@ -37,7 +37,7 @@ A `gum` checklist appears (space toggles, enter confirms):
 What should be set up? (space toggles, enter confirms)
 > [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
   [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
-  [✓] [not installed]        sudo-pop — sudo asks for the password in a popup · built from source
+  [✓] [not installed]        sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source
   [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
 
@@ -73,7 +73,7 @@ how it works and what can be tuned is in the linked document.
 |---|---|---|
 | **Korean input** | right Alt toggles 한/영 · `Control+space` freed for tmux's prefix · the Super+Space menu opens in Latin | `setup-korean.sh` · [docs](docs/setup-korean.md) |
 | **Bash config** | Alt-R history picker · fzf search and kill · delta diffs · optional guards that ask before `pacman` or `yay` runs | `install-bash-config.sh` · [docs](docs/bash-config.md) |
-| **sudo-pop** | the sudo password prompt in a popup window instead of the terminal. [Its own repository](https://github.com/minsoft1115/sudo-pop) — this step clones and builds it | `install-sudo-pop.sh` · [docs](docs/sudo-pop.md) |
+| **sudo-pop** | the password prompt for privileged actions in a popup instead of the terminal — a polkit authentication agent, with a sudo router in front that sends plain commands through run0. [Its own repository](https://github.com/minsoft1115/sudo-pop) — this step clones and builds it | `install-sudo-pop.sh` · [docs](docs/sudo-pop.md) |
 | **Workspaces bar** | hold Super to see which apps are where before switching · the focused workspace keeps its number | `install-workspaces-widget.sh` · [docs](docs/workspaces-widget.md) |
 
 ![The workspaces widget and the Super-hold preview](screenshots/workspaces-widget.png)

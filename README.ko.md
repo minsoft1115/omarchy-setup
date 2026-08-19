@@ -35,7 +35,7 @@ curl -fsSL https://raw.githubusercontent.com/minsoft1115/omarchy-setup/main/inst
 What should be set up? (space toggles, enter confirms)
 > [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
   [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
-  [✓] [not installed]        sudo-pop — sudo asks for the password in a popup · built from source
+  [✓] [not installed]        sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source
   [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
 
@@ -70,7 +70,7 @@ clone 은 `~/.local/share/minsoft1115/omarchy-setup` 에 남는다. 스크립트
 |---|---|---|
 | **한글 입력** | 오른쪽 Alt 로 한/영 · tmux 와 겹치던 `Control+space` 해제 · Super+Space 메뉴가 영문으로 열림 | `setup-korean.sh` · [문서](docs/setup-korean.md) |
 | **Bash 설정** | Alt-R 히스토리 피커 · fzf 검색과 종료 · delta diff · `pacman`·`yay` 를 실행하기 전에 묻는 선택 가드 | `install-bash-config.sh` · [문서](docs/bash-config.md) |
-| **sudo-pop** | sudo 비밀번호를 터미널이 아니라 팝업 창에서 받는다. [자기 저장소](https://github.com/minsoft1115/sudo-pop)가 따로 있고, 이 스텝이 clone 해서 빌드한다 | `install-sudo-pop.sh` · [문서](docs/sudo-pop.md) |
+| **sudo-pop** | 권한 요청 비밀번호를 터미널이 아니라 팝업에서 받는다 — polkit 인증 에이전트와, 그 앞에서 순수 명령을 run0 로 보내는 sudo 라우터. [자기 저장소](https://github.com/minsoft1115/sudo-pop)가 따로 있고, 이 스텝이 clone 해서 빌드한다 | `install-sudo-pop.sh` · [문서](docs/sudo-pop.md) |
 | **워크스페이스 바** | Super 를 누르고 있으면 어디에 뭐가 떠 있는지 보인다 · 포커스된 워크스페이스는 숫자 그대로 | `install-workspaces-widget.sh` · [문서](docs/workspaces-widget.md) |
 
 ![워크스페이스 위젯과 Super 홀드 미리보기](screenshots/workspaces-widget.png)
