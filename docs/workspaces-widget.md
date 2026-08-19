@@ -1,6 +1,6 @@
 # install-workspaces-widget.sh
 
-> [omarchy-setup](../README.md) 의 스크립트 중 하나.
+> [omarchy-setup](../README.ko.md) 의 스크립트 중 하나.
 
 Omarchy 바의 워크스페이스 인디케이터를 이 저장소가 들고 있는 버전으로 바꾸고,
 Super 를 누르고 있으면 각 워크스페이스에 뭐가 떠 있는지 보여 주는 팝업을 추가한다.

@@ -1,6 +1,6 @@
 # setup-korean.sh
 
-> [omarchy-setup](../README.md) 의 스크립트 중 하나.
+> [omarchy-setup](../README.ko.md) 의 스크립트 중 하나.
 
 한글 입력(fcitx5 + hangul)을 한 번에 세팅한다. 갓 설치한 머신에서 실행하면 패키지 설치부터
 키 재바인딩까지 끝나고, 이미 구성된 머신에서는 `--light` 로 키 설정만 다시 입힐 수 있다.
