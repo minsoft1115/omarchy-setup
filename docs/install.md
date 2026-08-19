@@ -41,6 +41,7 @@ curl | bash
 What should be set up? (space toggles, enter confirms)
 > [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
   [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+  [✓] [not installed]        sudo-pop — sudo asks for the password in a popup · built from source
   [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
 
@@ -64,8 +65,16 @@ What should be set up? (space toggles, enter confirms)
   |---|---|---|
   | `korean` | 조각 파일 + `hyprland.lua` 의 마커 | `hypr/korean-input.lua` |
   | `bash-config` | `~/.bashrc` 의 마커 | `bash/*.sh` 전부 (설치본에 없는 파일도 차이로 본다) |
+  | `sudo-pop` | 바이너리 + `sudo-pop.sh` | **빌드한 커밋** vs upstream `main` (아래) |
   | `workspaces` | 플러그인 `manifest.json` | 플러그인 폴더 전체 + `hypr/workspace-peek.lua` |
   | `zz-pkg-guards` | 설치본에 파일 존재 | `bash/zz-pkg-guards.sh` |
+
+  `sudo-pop` 만 저장소에 비교할 사본이 없다. [자기 저장소](sudo-pop.md)를 clone 해서 빌드하는
+  스텝이고, 바이너리에 물어볼 `--version` 도 없어서(`--init`·`--uninit` 이 아닌 인자는 전부
+  sudo 로 넘어간다) 그 스텝이 빌드한 커밋을 적어 둔다. 여기서는 그 값을
+  `git ls-remote`(5초 타임아웃, 실측 0.45초)로 받은 upstream `main` 과 비교한다. 기록이 없으면
+  — 손으로 깔았거나 upstream 설치기로 깔았으면 — `outdated` 다. 네트워크가 없으면 `latest`
+  로 본다: 모르는 것을 추측해서 몇 분짜리 빌드를 권하지 않는다.
 
   `korean-bindings.lua` 는 머신마다 생성되는 파일이라 비교에서 뺀다 — 명령 문자열이 Omarchy
   기본값에서 나오므로 저장소 쪽에 대응하는 원본이 없다. 스텝을 다시 돌리면 어차피 다시 만든다.
@@ -82,14 +91,16 @@ What should be set up? (space toggles, enter confirms)
   상태를 `installed, latest` 가 아니라 `installed / latest` 로 쓰는 이유다
 - 상태 칸은 **고정 폭으로 정렬**한다. 가운뎃점(`·`) 같은 멀티바이트 문자를 쓰면 `printf` 가
   바이트로 세어 한 칸씩 어긋나므로, 구분자는 ASCII 로 둔다
-- 고른 순서와 무관하게 **실행 순서는 고정**이다: 한글 → bash → 위젯.
-  위젯이 `omarchy restart shell` 로 바를 재시작하므로 마지막이다
+- 고른 순서와 무관하게 **실행 순서는 고정**이다: 한글 → bash → sudo-pop → 위젯.
+  위젯이 `omarchy restart shell` 로 바를 재시작하므로 마지막이다.
+  sudo-pop 이 bash 뒤인 것은 **제거가 역순**이기 때문이다 — `sudo-pop --uninit` 은 bash 단계가
+  깐 로더가 `~/.bashrc` 에 아직 있을 때 돌아야 한다
 - `gum` 이 없으면 항목별 `[Y/n]` 로 묻는다
 - **물어볼 터미널이 아예 없으면 거부한다.** CI·cron·프로비저닝 스크립트처럼 보는 사람이 없는
   곳에서 동의를 넘겨짚지 않는다. 그런 환경에서는 `--all` 이나 `--only` 로 명시해야 한다
 
 ```
-[x] no terminal to ask at — say what you want with --all or --only korean,bash-config,workspaces
+[x] no terminal to ask at — say what you want with --all or --only korean,bash-config,sudo-pop,workspaces
 ```
 
 ### 선택 파일은 그 단계가 스스로 묻는다
@@ -116,7 +127,7 @@ What should be set up? (space toggles, enter confirms)
 | 옵션 | 하는 일 |
 |---|---|
 | `--all` | 묻지 않고 전부 |
-| `--only korean,bash-config` | 이름으로 지정 (`--list` 의 첫 열) |
+| `--only korean,sudo-pop` | 이름으로 지정 (`--list` 의 첫 열) |
 | `--guards` / `--no-guards` | `zz-pkg-guards.sh` 답을 미리 정함 |
 | `--list` | 설치 가능한 것과 현재 상태만 출력 |
 | `--dry-run` | 무엇이 돌지만 보여 주고 실행 안 함 |
@@ -137,9 +148,10 @@ $ ./install.sh --list
 name         state          what it does
 korean       [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
 bash-config  [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+sudo-pop     [installed / latest]   sudo-pop — sudo asks for the password in a popup · built from source
 workspaces   [installed / latest]   Workspaces bar — hold Super to see which apps are where before switching
 
-use with: install.sh --only korean,bash-config,workspaces
+use with: install.sh --only korean,bash-config,sudo-pop,workspaces
 ```
 
 ---
@@ -152,7 +164,8 @@ use with: install.sh --only korean,bash-config,workspaces
 
 - 같은 체크리스트가 **전부 해제된 상태**로 뜬다. 설치는 잘못 골라도 다시 돌리면 되지만
   제거는 아니다
-- **설치의 역순**으로 진행한다 (위젯 → bash → 한글)
+- **설치의 역순**으로 진행한다 (위젯 → sudo-pop → bash → 한글). sudo-pop 의 `--uninit` 이
+  bash 로더보다 먼저 도는 것이 이 순서의 요점이다
 - 끝나면 `~/.config/minsoft1115/` 가 비었을 때 정리한다
 - 물어볼 터미널이 없으면 **거부한다** (설치와 같다)
 
@@ -166,13 +179,18 @@ use with: install.sh --only korean,bash-config,workspaces
 
 ## clone 을 남기는 이유
 
-세 스크립트 모두 **저장소에서 설치한다** — alias·function 소스, 위젯 QML 소스, Hyprland Lua
+스크립트들이 **저장소에서 설치한다** — alias·function 소스, 위젯 QML 소스, Hyprland Lua
 조각이 전부 저장소에 있고, 고친 뒤 다시 돌리는 게 반영 방법이다. 첫 실행 후 지우면 갱신
 경로가 사라진다. 그래서 임시 폴더가 아니라 고정 위치에 두고 남긴다.
 
 ```
 ~/.local/share/minsoft1115/omarchy-setup
 ```
+
+[sudo-pop](sudo-pop.md) 도 같은 이유로 자기 clone 을 옆에 남긴다
+(`~/.local/share/minsoft1115/sudo-pop`). 그쪽은 빌드 트리까지 들고 있어서 다음 업데이트가
+증분 빌드가 된다. `install.sh --purge` 는 **이 저장소의 clone 만** 지운다 — sudo-pop 쪽은
+`./scripts/install-sudo-pop.sh remove --purge` 가 지운다.
 
 다시 실행하면 `git pull --ff-only` 부터 한다. fast-forward 가 안 되면 경고만 하고 있는 그대로
 쓴다 — 로컬에서 고쳐 둔 것을 덮지 않기 위해서다.
@@ -187,6 +205,7 @@ use with: install.sh --only korean,bash-config,workspaces
 == Summary ==
   korean ok
   bash-config FAILED
+  sudo-pop ok
   workspaces ok
 ```
 

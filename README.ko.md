@@ -45,12 +45,14 @@ stdin 이 키보드가 아니라서 체크리스트가 그대로 EOF 를 읽고 
 What should be set up? (space toggles, enter confirms)
 > [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
   [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+  [✓] [not installed]        sudo-pop — sudo asks for the password in a popup · built from source
   [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
 
 - 상태가 **세 가지**다. 앞은 "깔려 있나", 뒤는 "최신인가" 를 말한다. 판정은 저장소 파일과
   설치본을 **바이트 단위로 비교**한다 — `git pull` 로 저장소가 앞섰거나 소스를 직접 고쳤으면
-  `outdated` 가 된다
+  `outdated` 가 된다. sudo-pop 만 예외다. 여기에 비교할 사본이 없어서, 바이너리를 빌드한
+  **커밋을 upstream 과 비교**한다
 
   | 상태 | 뜻 | 기본 선택 |
   |---|---|---|
@@ -62,17 +64,22 @@ What should be set up? (space toggles, enter confirms)
 - 모든 체크박스가 같은 뜻이다 — **"이번에 실행한다"**. 선택 파일 `zz-pkg-guards.sh` 는 목록에
   없다. bash 단계가 실행되는 도중에, 그 파일이 **아직 없을 때만** 스스로 물어본다.
   이미 쓰고 있으면 묻지 않고 최신으로 갱신한다 (`--guards` / `--no-guards` 로 미리 답할 수도 있다)
-- 고른 순서와 무관하게 **실행 순서는 고정**이다 (`korean` → `bash-config` → `workspaces`).
-  워크스페이스 위젯이 셸을 재시작하므로 마지막이다
+- 고른 순서와 무관하게 **실행 순서는 고정**이다
+  (`korean` → `bash-config` → `sudo-pop` → `workspaces`). 워크스페이스 위젯이 셸을
+  재시작하므로 마지막이다. sudo-pop 이 bash-config 뒤인 것은 제거가 역순이기 때문이다 —
+  `--uninit` 은 bash 단계가 깐 로더가 `~/.bashrc` 에 아직 있을 때 돌아야 한다
 - 하나가 실패해도 나머지는 계속하고, 끝에 요약이 나온다
 
-**clone 은 지우지 않는다.** 세 스크립트 모두 저장소에서 설치하고(alias·위젯 소스·Hyprland 조각),
+**clone 은 지우지 않는다.** 스크립트들이 저장소에서 설치하고(alias·위젯 소스·Hyprland 조각),
 고친 뒤 다시 돌리는 게 반영 방법이라 지우면 갱신 경로가 사라진다. 다시 실행하면 pull 부터 한다.
+
+sudo-pop 만 소스가 이 저장소에 없다. 자기 저장소를 갖고 있어서, 그 스텝이 같은 방식으로
+clone 해서 **빌드**한다 — 나머지가 1초면 끝나는 자리에서 몇 분이 걸린다.
 
 | 옵션 | 하는 일 |
 |---|---|
 | `--all` | 묻지 않고 전부 |
-| `--only korean,bash-config` | 이름으로 지정 (`--list` 의 첫 열) |
+| `--only korean,sudo-pop` | 이름으로 지정 (`--list` 의 첫 열) |
 | `--guards` / `--no-guards` | `zz-pkg-guards.sh` 답을 미리 정함 |
 | `--list` | 설치 가능한 것과 현재 상태만 출력 |
 | `--dry-run` | 무엇이 돌지만 보여 주고 실행 안 함 |
@@ -89,7 +96,8 @@ What should be set up? (space toggles, enter confirms)
 # 개별 스크립트
 
 `install.sh` 없이 하나만 돌려도 된다. 전부 저장소 안에서 실행한다 — 소스(`bash/`, `hypr/`,
-`minsoft1115.workspaces/`)를 읽어 설치하기 때문이다.
+`minsoft1115.workspaces/`)를 읽어 설치하기 때문이다. sudo-pop 스텝만 예외로, 자기 저장소를
+clone 해서 빌드한다.
 
 ```bash
 git clone https://github.com/minsoft1115/omarchy-setup.git
@@ -193,6 +201,57 @@ source ./scripts/install-bash-config.sh install
 
 ---
 
+## install-sudo-pop.sh
+
+[sudo-pop](https://github.com/minsoft1115/sudo-pop) 을 소스에서 빌드해 설치한다. sudo 비밀번호를
+터미널이 아니라 **팝업 창**에서 받는다 — 터미널의 stdin/stdout/stderr 는 그대로 실제 명령에
+닿으므로 `pacman` 의 `[Y/n]` 도, 전체화면 `vim` 도 평소대로 동작한다.
+
+```bash
+./scripts/install-sudo-pop.sh install
+```
+
+**소스에서 빌드하는 유일한 스텝**이고, 소스가 이 저장소에 없는 유일한 스텝이다.
+`~/.local/share/minsoft1115/sudo-pop` 에 `main` 으로 clone 한 뒤, 빌드는 그 저장소의
+`install.sh` 에 그대로 맡긴다 — 체크아웃 안에서 실행하면 그 체크아웃을 빌드하고 아무것도
+내려받지 않는다.
+
+upstream 의 `curl | bash` 한 줄이 아니라 clone 인 이유는, 체크리스트가 **"최신인가" 를 몇 분짜리
+빌드 없이 답할 수 있어야** 하기 때문이다. 그런데 **sudo-pop 에는 `--version` 이 없다** —
+`--init`·`--uninit` 이 아닌 인자는 전부 sudo 로 넘어간다. 그래서 빌드한 커밋을
+`~/.local/state/minsoft1115/sudo-pop.rev` 에 적어 두고 upstream 과 비교한다. 손으로 깐
+바이너리는 그 기록이 없어 `outdated` 로 읽히는데, 알 수 있는 상태로 만드는 방법이 한 번 다시
+빌드하는 것뿐이라서다.
+
+C 링커가 필요하고 **`cc` 가 없으면 그 자리에서 멈춘다** (`omarchy pkg add base-devel`).
+Rust 는 설치하지 않는다 — `cargo` 가 있으면 쓰고, 없으면 `mise` 가 sudo-pop 의 `mise.toml` 에
+핀된 툴체인을 받아 온다. `mise` 는 Omarchy 기본 패키지다.
+
+| 옵션 | 하는 일 |
+|---|---|
+| `--force` | 체크아웃이 설치된 커밋과 같아도 다시 빌드 |
+| `--purge` | `remove` 와 함께 쓰면 clone 과 빌드 트리까지 삭제 |
+| `--prefix <경로>` | 바이너리 위치 (기본 `~/.local/bin`) |
+
+제거도 같은 upstream 스크립트에 맡긴다. 거기 `--uninstall` 이 있어서 — `--uninit` 을 먼저 하고
+바이너리를 지우며(alias 가 가리키는 파일보다 오래 산다), 바이너리가 이미 없으면 그 파일들을
+직접 지우고, `begin` 마커에 짝이 없으면 설정을 먹느니 그냥 두며,
+`$XDG_RUNTIME_DIR` 의 askpass 링크까지 정리한다. 체크아웃이 아예 없을 때만 이 스크립트가
+직접 지운다.
+
+```bash
+./scripts/install-sudo-pop.sh remove
+```
+
+`~/.config/minsoft1115/bash/` 와 `~/.bashrc` 의 로더 블록을 bash 단계와 **같이 쓰는데**,
+양쪽 다 이미 그걸 알고 있다: 같은 마커 블록을 먼저 도착한 쪽이 쓰고, `install-bash-config.sh`
+는 `.installed` 목록에 있는 것만 지우며, `sudo-pop --uninit` 은 로더를 남긴다.
+`zz-pkg-guards.sh` 가 넘겨받는 `alias sudo=...` 가 바로 이것이다.
+
+자세한 내용은 [docs/sudo-pop.md](docs/sudo-pop.md) 참고.
+
+---
+
 ## install-workspaces-widget.sh
 
 **어느 워크스페이스로 갈지 정하기 전에, 거기 뭐가 떠 있는지 먼저 보는 것**이 목적이다.
@@ -227,6 +286,7 @@ Quickshell 플러그인과 Hyprland 키 바인딩을 함께 설치한다.
 | [docs/install.md](docs/install.md) | `install.sh` — 부트스트랩, 체크리스트, 되돌리기 |
 | [docs/setup-korean.md](docs/setup-korean.md) | `setup-korean.sh` — 단계별 동작, 건드리는 파일, 문제 해결 |
 | [docs/bash-config.md](docs/bash-config.md) | `install-bash-config.sh` — 로더 구조, 선택 파일, 로드 순서 함정 |
+| [docs/sudo-pop.md](docs/sudo-pop.md) | `install-sudo-pop.sh` — 왜 clone 인가, 무엇을 빌드하나, "최신" 판정 |
 | [docs/workspaces-widget.md](docs/workspaces-widget.md) | `install-workspaces-widget.sh` — 무엇이 바뀌나, 구성, 튜닝 |
 
 ### 참고 기록
