@@ -31,6 +31,7 @@
 #     bat         `cat` with syntax highlighting
 #     ripgrep     the `rg` search used by fsearch
 #     fzf         the picker behind fkill and fsearch
+#     gum         the menu the package guards ask with
 #
 #   Package name and command are not always the same word -- git-delta installs
 #   `delta`, ripgrep installs `rg` -- which is why presence is asked about by
@@ -39,7 +40,15 @@
 # Layout:
 #   source (edit here)  ./bash/*.sh
 #   installed copy      ~/.config/minsoft1115/bash/*.sh
+#   manifest            ~/.config/minsoft1115/bash/.installed
 #   loader              ~/.bashrc, between markers
+#
+# Sharing the folder:
+#   The installed folder is not ours alone -- sudo-pop drops its own snippet in
+#   there, and anything else may too. So the copies this script made are written
+#   down in a manifest, and only files on that list are ever deleted. Without it
+#   the sync would read every foreign file as "gone from the repo" and remove
+#   it, which is exactly what it used to do to sudo-pop.sh on every install.
 #
 # Optional files:
 #   Some files are a matter of taste rather than part of the set, so install
@@ -49,7 +58,8 @@
 #   run is a prompt people stop reading. With no terminal to ask at, they are
 #   skipped rather than guessed at.
 #
-#     pkg-guards.sh   pacman/yay/sudo guards, which Omarchy also ships
+#     zz-pkg-guards.sh   asks before pacman and yay run, and names the omarchy
+#                        command instead -- Omarchy ships guards of its own
 #
 # The loader is a loop over the installed folder rather than one source line per
 # file, so adding a file to ./bash/ later needs an install and nothing else —
@@ -109,18 +119,21 @@ MSB_REPO_DIR="$(dirname -- "$MSB_SCRIPT_DIR")"
 MSB_SRC_DIR="${MSB_SRC_DIR:-$MSB_REPO_DIR/bash}"
 MSB_DST_DIR="${MSB_DST_DIR:-$HOME/.config/minsoft1115/bash}"
 MSB_BASHRC="${MSB_BASHRC:-$HOME/.bashrc}"
+# The files this script put in the installed folder, one name per line. A
+# dotfile, so the loader's *.sh glob never picks it up.
+MSB_MANIFEST="$MSB_DST_DIR/.installed"
 MSB_BEGIN="# minsoft1115-bash:begin"
 MSB_END="# minsoft1115-bash:end"
 
 # Arch package names, space separated. The binary a package provides is not
 # always its name -- git-delta installs `delta` -- so presence is asked about by
 # package, never by command.
-MSB_PACKAGES="${MSB_PACKAGES:-git-delta bat ripgrep fzf}"
+MSB_PACKAGES="${MSB_PACKAGES:-git-delta bat ripgrep fzf gum}"
 MSB_SKIP_PACKAGES=0
 
 # Files install asks about instead of just installing. Space separated names,
 # matched against ./bash/. Anything not listed here is installed unconditionally.
-MSB_OPTIONAL="${MSB_OPTIONAL:-pkg-guards.sh}"
+MSB_OPTIONAL="${MSB_OPTIONAL:-zz-pkg-guards.sh}"
 # Set by --with-optional / --no-optional to answer without asking.
 MSB_OPTIONAL_ANSWER=""
 
@@ -150,6 +163,18 @@ msb_source_files() {
 msb_installed_files() {
   [ -d "$MSB_DST_DIR" ] || return 0
   find "$MSB_DST_DIR" -maxdepth 1 -type f -name '*.sh' -printf '%f\n' | sort
+}
+
+# Names we installed ourselves. An empty answer means we have never recorded
+# anything, which is not the same as "we installed nothing" -- see msb_sync_files.
+msb_manifest() {
+  [ -f "$MSB_MANIFEST" ] || return 0
+  sort "$MSB_MANIFEST"
+}
+
+msb_ours() {
+  [ -f "$MSB_MANIFEST" ] || return 1
+  grep -qxF -- "$1" "$MSB_MANIFEST"
 }
 
 msb_loader_present() {
@@ -246,9 +271,12 @@ msb_in_sync() {
     cmp -s "$MSB_SRC_DIR/$f" "$MSB_DST_DIR/$f" || return 1
   done <<<"$files"
 
+  # An installed file that is not in the repo only counts against us if we are
+  # the ones who put it there; the folder is shared with other tools.
   while IFS= read -r inst; do
     [ -n "$inst" ] || continue
-    printf '%s\n' "$files" | grep -qxF -- "$inst" || return 1
+    printf '%s\n' "$files" | grep -qxF -- "$inst" && continue
+    msb_ours "$inst" && return 1
   done <<<"$(msb_installed_files)"
   return 0
 }
@@ -311,9 +339,24 @@ msb_sync_files() {
   while IFS= read -r stale; do
     [ -n "$stale" ] || continue
     printf '%s\n' "$files" | grep -qxF -- "$stale" && continue
+    if ! msb_ours "$stale"; then
+      # Someone else's file, or one from before the manifest existed. Either
+      # way, deleting it is not ours to do.
+      msb_log "left alone: $stale (not installed by this script)"
+      continue
+    fi
     rm -f "$MSB_DST_DIR/$stale"
     msb_log "removed stale copy: $stale (gone from the repo)"
   done <<<"$(msb_installed_files)"
+
+  # Record what we own now -- after the removals, so a declined optional file
+  # drops off the list and stops being ours.
+  local owned="" f2
+  while IFS= read -r f2; do
+    [ -n "$f2" ] || continue
+    [ -f "$MSB_DST_DIR/$f2" ] && owned="$owned$f2"$'\n'
+  done <<<"$files"
+  printf '%s' "$owned" >"$MSB_MANIFEST"
 }
 
 # ------------------------------------------------------------------------------
@@ -430,11 +473,28 @@ msb_do_install() {
 
 msb_do_remove() {
   msb_remove_loader
-  if [ -d "$MSB_DST_DIR" ]; then
-    rm -rf "$MSB_DST_DIR"
-    msb_log "deleted $MSB_DST_DIR"
-  else
+  if [ ! -d "$MSB_DST_DIR" ]; then
     msb_log "no installed copy — skipped"
+  else
+    # Delete what we installed and nothing else: the folder is shared, and
+    # rm -rf on it used to take sudo-pop's snippet with it.
+    local name kept=0
+    while IFS= read -r name; do
+      [ -n "$name" ] || continue
+      rm -f "$MSB_DST_DIR/$name"
+    done <<<"$(msb_manifest)"
+    rm -f "$MSB_MANIFEST"
+
+    while IFS= read -r name; do
+      [ -n "$name" ] || continue
+      kept=$((kept + 1))
+    done <<<"$(msb_installed_files)"
+
+    if [ "$kept" = 0 ] && rmdir "$MSB_DST_DIR" 2>/dev/null; then
+      msb_log "deleted $MSB_DST_DIR"
+    else
+      msb_log "removed our files from $MSB_DST_DIR ($kept file(s) from elsewhere kept)"
+    fi
   fi
   msb_log "done. open shells keep what they already loaded until they restart."
 }

@@ -57,7 +57,7 @@ What should be set up? (space toggles, enter confirms)
   | `installed / latest` | 깔려 있고 저장소와 같음 | — |
 
   **할 일이 있는 것만 기본 선택**된다. 이미 최신인 걸 다시 돌릴 이유가 없다
-- 모든 체크박스가 같은 뜻이다 — **"이번에 실행한다"**. 선택 파일 `pkg-guards` 는 목록에
+- 모든 체크박스가 같은 뜻이다 — **"이번에 실행한다"**. 선택 파일 `zz-pkg-guards.sh` 는 목록에
   없다. bash 단계가 실행되는 도중에, 그 파일이 **아직 없을 때만** 스스로 물어본다.
   이미 쓰고 있으면 묻지 않고 최신으로 갱신한다 (`--guards` / `--no-guards` 로 미리 답할 수도 있다)
 - 고른 순서와 무관하게 **실행 순서는 고정**이다 (`korean` → `bash-config` → `workspaces`).
@@ -71,7 +71,7 @@ What should be set up? (space toggles, enter confirms)
 |---|---|
 | `--all` | 묻지 않고 전부 |
 | `--only korean,bash-config` | 이름으로 지정 (`--list` 의 첫 열) |
-| `--guards` / `--no-guards` | pkg-guards 답을 미리 정함 |
+| `--guards` / `--no-guards` | `zz-pkg-guards.sh` 답을 미리 정함 |
 | `--list` | 설치 가능한 것과 현재 상태만 출력 |
 | `--dry-run` | 무엇이 돌지만 보여 주고 실행 안 함 |
 | `--dir <경로>` | clone 위치 변경 |
@@ -142,12 +142,29 @@ Hyprland 설정은 **원본 파일을 고치지 않는다.** Lua 조각을 `~/.c
 | `bash/fkill.sh` | `fkill` — 내 프로세스 목록을 fzf 로 골라 종료. `fkill -9` 처럼 시그널을 넘길 수 있다 |
 | `bash/fsearch.sh` | `fsearch` — 파일 내용 검색(rg)을 fzf 로 훑어보기. `fsearch TODO` / `fsearch md TODO` (확장자 한정), Enter 로 `$EDITOR` 열기, Ctrl-Y 로 경로 복사 |
 | `bash/gdiff.sh` | `gdiff` — `git diff` 를 `delta` 로 넘겨 본다. 인자는 그대로 전달 |
-| `bash/pkg-guards.sh` | **선택** — `pacman`·`yay` 를 실행 대신 안내로 막고(`omarchy pkg add` / `omarchy pkg drop` / `omarchy pkg aur add` / `omarchy update`), `sudo` 뒤에 공백을 둬 `sudo pacman` 도 걸리게 한다 |
+| `bash/zz-pkg-guards.sh` | **선택** — `pacman`·`yay` 를 실행하기 전에 대신 쓸 omarchy 명령을 제시하고 **정말 실행할지 물어본다**. 조회(`-Q`, `-Ss`, `-Si` …)는 묻지 않고 그대로 통과 |
 
-`pkg-guards.sh` 는 Omarchy 가 이미 비슷한 것을 갖고 있어서 **설치할지 물어본다** (`gum confirm`).
+`zz-pkg-guards.sh` 는 Omarchy 가 이미 비슷한 것을 갖고 있어서 **설치할지 물어본다** (`gum confirm`).
 이미 깔려 있으면 묻지 않고 갱신만 한다.
 Omarchy 기본 rc 다음에 로드되므로 같은 이름이면 이쪽이 이기고, 로드 순서는 **파일명 순**이다.
-의존 도구(`git-delta`, `bat`, `ripgrep`, `fzf`)는 `install` 이 **`omarchy pkg` 로 먼저 깐다.**
+의존 도구(`git-delta`, `bat`, `ripgrep`, `fzf`, `gum`)는 `install` 이 **`omarchy pkg` 로 먼저 깐다.**
+
+예전에는 `pacman`·`yay` 를 안내만 띄우고 **실행을 막았는데**, 진짜로 pacman 을 써야 하는
+때가 반드시 있고 그때마다 `command pacman ...` 으로 줄 전체를 다시 쳐야 했다. 그래서 막는
+대신 **묻고, 권장안을 한 키로 고르게** 바꿨다.
+
+```
+$ sudo pacman -S ripgrep
+Omarchy manages packages on this machine.
+> omarchy pkg add ripgrep
+  run as typed: sudo pacman -S ripgrep
+  cancel
+```
+
+`sudo pacman` 까지 잡으려면 `sudo` 도 함수여야 하는데, **alias 가 함수보다 먼저 펼쳐진다.**
+그래서 이 파일은 이름으로 **맨 나중에 로드**되게 하고(`zz-` 접두사), 그 시점에 남아 있는
+`alias sudo=...`(sudo-pop 이 그런 걸 건다)를 넘겨받아 그대로 호출한다 — 두 도구가 서로를
+몰라도 겹쳐 쓸 수 있다. 자세한 건 [docs/bash-config.md](docs/bash-config.md#선택-파일) 참고.
 
 ```bash
 ./scripts/install-bash-config.sh install
@@ -165,6 +182,10 @@ source ./scripts/install-bash-config.sh install
 ```bash
 ./scripts/install-bash-config.sh remove
 ```
+
+설치 폴더 `~/.config/minsoft1115/bash/` 는 **우리 것만 있는 곳이 아니다** — sudo-pop 도 자기
+조각을 거기 깐다. 그래서 깐 파일을 `.installed` 에 적어 두고 **그 목록에 있는 것만** 지운다.
+`install` 의 정리도, `remove` 도 남의 파일은 건드리지 않는다.
 
 자세한 내용은 [docs/bash-config.md](docs/bash-config.md) 참고.
 

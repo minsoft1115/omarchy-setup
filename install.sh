@@ -15,7 +15,7 @@
 #   --all              Select everything without asking
 #   --only <a,b,c>     Select these by name (see --list)
 #   --guards / --no-guards
-#                      Answer the bash step's optional pkg-guards question in
+#                      Answer the bash step's optional zz-pkg-guards.sh question
 #                      advance. Without either, that step asks for itself -- and
 #                      only when the file is not already installed
 #   --dir <path>       Where the repo lives (default ~/.local/share/minsoft1115/omarchy-setup)
@@ -105,7 +105,7 @@ step_state() {
       for f in "$REPO_DIR"/bash/*.sh; do
         name="${f##*/}"
         # An optional file that was declined is a choice, not a difference.
-        [ -f "$BASH_DST/$name" ] || { [ "$name" = "pkg-guards.sh" ] && continue
+        [ -f "$BASH_DST/$name" ] || { [ "$name" = "zz-pkg-guards.sh" ] && continue
                                       echo "installed / outdated"; return; }
         cmp -s "$f" "$BASH_DST/$name" || { echo "installed / outdated"; return; }
       done
