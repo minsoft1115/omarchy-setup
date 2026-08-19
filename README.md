@@ -47,13 +47,16 @@ Then a `gum` checklist appears (space toggles, enter confirms):
 What should be set up? (space toggles, enter confirms)
 > [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
   [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+  [✓] [not installed]        sudo-pop — sudo asks for the password in a popup · built from source
   [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
 
 - There are **three states**. The first half says whether it is installed, the
   second whether it is current. The answer comes from a **byte comparison**
   between the repo files and the installed copies — a `git pull` that moved the
-  repo ahead, or a source file edited by hand, both show up as `outdated`
+  repo ahead, or a source file edited by hand, both show up as `outdated`.
+  sudo-pop is the exception: it has no copy here to compare against, so the
+  commit its binary was built from is compared against its upstream instead
 
   | State | Meaning | Selected by default |
   |---|---|---|
@@ -68,19 +71,25 @@ What should be set up? (space toggles, enter confirms)
   runs, and only when the file is not there yet. If it is already in use it is
   updated without asking (`--guards` / `--no-guards` answer in advance)
 - The **order is fixed** regardless of what you picked
-  (`korean` → `bash-config` → `workspaces`). The workspaces widget restarts the
-  shell, so it goes last
+  (`korean` → `bash-config` → `sudo-pop` → `workspaces`). The workspaces widget
+  restarts the shell, so it goes last. sudo-pop follows bash-config, which puts
+  it *before* bash-config when removing — its `--uninit` has to run while the
+  snippet loader that bash step owns is still in `~/.bashrc`
 - One failure does not stop the rest; a summary is printed at the end
 
-**The clone is not deleted.** All three scripts install *from the repo* (alias
+**The clone is not deleted.** The scripts install *from the repo* (alias
 sources, widget sources, Hyprland snippets), and editing a source and re-running
 is how a change is applied — deleting the clone would remove that path. Running
 it again starts with a pull.
 
+sudo-pop is the one step whose source is not in this repo. It has its own, and
+its step clones and builds that one the same way — a Rust build, so it takes
+minutes where the others take a second.
+
 | Option | |
 |---|---|
 | `--all` | everything, without asking |
-| `--only korean,bash-config` | by name (the first column of `--list`) |
+| `--only korean,sudo-pop` | by name (the first column of `--list`) |
 | `--guards` / `--no-guards` | answer the `zz-pkg-guards.sh` question in advance |
 | `--list` | print what is available and its current state |
 | `--dry-run` | show what would run, run nothing |
@@ -99,7 +108,8 @@ See [docs/install.md](docs/install.md) for the details (Korean).
 
 You can run just one, without `install.sh`. They all run from inside the repo,
 because they read their sources from it (`bash/`, `hypr/`,
-`minsoft1115.workspaces/`).
+`minsoft1115.workspaces/`) — except the sudo-pop one, which builds from a clone
+of its own repository.
 
 ```bash
 git clone https://github.com/minsoft1115/omarchy-setup.git
@@ -218,6 +228,63 @@ See [docs/bash-config.md](docs/bash-config.md) for the details (Korean).
 
 ---
 
+## install-sudo-pop.sh
+
+Builds and installs [sudo-pop](https://github.com/minsoft1115/sudo-pop): the
+sudo password prompt moves out of the terminal into a popup window, so the
+terminal's stdin, stdout and stderr reach the real command untouched. `pacman`'s
+`[Y/n]` still works, and so does a full-screen `vim`.
+
+```bash
+./scripts/install-sudo-pop.sh install
+```
+
+This is the one step that **builds from source**, and the one whose source is
+not in this repo. It clones sudo-pop to `~/.local/share/minsoft1115/sudo-pop`,
+pinned to `main`, and hands the build to that repo's own `install.sh` — run from
+inside a checkout it builds the checkout and downloads nothing.
+
+A clone rather than upstream's `curl | bash` one-liner, because the checklist
+has to answer *"is it current"* without building for minutes to find out — and
+**sudo-pop has no `--version` to ask**: every argument that is not
+`--init`/`--uninit` is passed through to sudo. So the commit that was built is
+written down (`~/.local/state/minsoft1115/sudo-pop.rev`) and compared against
+upstream. A binary installed by hand has no such record and reads as `outdated`:
+building once is the only way to make it knowable.
+
+It needs a C linker — **without `cc` it stops** (`omarchy pkg add base-devel`).
+Rust it does not install: `cargo` is used if present, otherwise `mise`, which
+reads the toolchain pinned in sudo-pop's `mise.toml`, and mise ships with
+Omarchy.
+
+| Option | |
+|---|---|
+| `--force` | rebuild even when the checkout is already what is installed |
+| `--purge` | with `remove`, delete the clone and its build tree too |
+| `--prefix <path>` | where the binary goes (default `~/.local/bin`) |
+
+Removing is handed back to the same upstream script, which has an
+`--uninstall`: it runs `--uninit` before deleting the binary — the alias
+outlives the file it points at — removes those files itself when the binary is
+already gone, leaves a `begin` marker with no `end` alone rather than eating a
+config, and takes out the askpass symlink under `$XDG_RUNTIME_DIR`. Only when
+the checkout itself is missing does this script do the removing.
+
+```bash
+./scripts/install-sudo-pop.sh remove
+```
+
+It shares `~/.config/minsoft1115/bash/` and the `~/.bashrc` loader block with
+the bash step, and both sides already know it: the same marker block is written
+by whichever gets there first, `install-bash-config.sh` only ever deletes files
+on its own `.installed` list, and `sudo-pop --uninit` leaves the loader alone.
+`zz-pkg-guards.sh` takes over whatever `alias sudo=...` is in place when it
+loads — which is this one.
+
+See [docs/sudo-pop.md](docs/sudo-pop.md) for the details (Korean).
+
+---
+
 ## install-workspaces-widget.sh
 
 The point is **seeing what is on a workspace before deciding to switch to it.**
@@ -259,6 +326,7 @@ touches, and why it was built that way.
 | [docs/install.md](docs/install.md) | `install.sh` — bootstrap, the checklist, undoing |
 | [docs/setup-korean.md](docs/setup-korean.md) | `setup-korean.sh` — step by step, files touched, troubleshooting |
 | [docs/bash-config.md](docs/bash-config.md) | `install-bash-config.sh` — the loader, the optional file, the load-order trap |
+| [docs/sudo-pop.md](docs/sudo-pop.md) | `install-sudo-pop.sh` — why a clone, what it builds, how "current" is decided |
 | [docs/workspaces-widget.md](docs/workspaces-widget.md) | `install-workspaces-widget.sh` — what changes, the layout, tuning |
 
 ### Research notes
