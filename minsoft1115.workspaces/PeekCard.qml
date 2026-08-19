@@ -45,6 +45,14 @@ Item {
     return out
   }
 
+  // One drawn row's width, added up from the measured columns. It cannot be
+  // taken from the parent: PopupCard sizes itself from this card's
+  // implicitWidth, which comes from the Column, so a child sized by the Column
+  // would close the loop the header warns about. The separator is the only
+  // thing here that needs a width of its own, and this is where it gets it.
+  readonly property real contentWidth: badgeWidth + Style.space(10) + iconSize
+    + Style.space(8) + appColWidth + Style.space(8) + titleColWidth
+
   readonly property real appColWidth: appMeasure.implicitWidth
   readonly property real titleColWidth: Math.min(titleMeasure.implicitWidth, titleMaxWidth)
 
@@ -94,81 +102,107 @@ Item {
 
   Column {
     id: column
-    spacing: Style.space(10)
+    // Half of the gap between groups; the other half sits under the separator.
+    // Less than it used to be, because the line now does the work the empty
+    // space was doing alone.
+    spacing: Style.space(8)
 
     Repeater {
       model: root.model
 
-      // Badge on the left, its windows stacked to the right of it. Keeping the
-      // list on the badge's row uses the space the window count used to take.
-      Row {
+      Column {
         required property var modelData
-        spacing: Style.space(10)
+        required property int index
+        spacing: Style.space(8)
 
+        // Groups run together without this: with three or more windows in one
+        // workspace the gap between groups stops reading as larger than the gap
+        // between rows, and the badge -- which only sits beside the first row --
+        // is too far away to say where the group ended.
+        //
+        // Faint on purpose. Window titles sit at 0.7-1.0 and an inactive badge
+        // at 0.45, so a separator any brighter than this reads as one more line
+        // of content rather than as structure. (0.5 was tried and does exactly
+        // that.) An invisible item is skipped by the Column, so the first group
+        // keeps its spacing.
         Rectangle {
-          width: root.badgeWidth
-          height: Style.space(16)
-          radius: Style.space(2)
-          color: modelData.focused ? root.textColor : "transparent"
-          border.width: modelData.focused ? 0 : 1
-          border.color: root.textColor
-          opacity: modelData.focused ? 1 : 0.45
-
-          Text {
-            anchors.centerIn: parent
-            text: modelData.name
-            color: modelData.focused ? Color.popups.background : root.textColor
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
-            font.bold: modelData.focused
-            renderType: Text.NativeRendering
-          }
+          visible: index > 0
+          width: root.contentWidth
+          height: 1
+          color: root.textColor
+          opacity: 0.15
         }
 
-        Column {
-          spacing: Style.space(3)
+        // Badge on the left, its windows stacked to the right of it. Keeping the
+        // list on the badge's row uses the space the window count used to take.
+        Row {
+          spacing: Style.space(10)
 
-          Repeater {
-            model: modelData.clients
+          Rectangle {
+            width: root.badgeWidth
+            height: Style.space(16)
+            radius: Style.space(2)
+            color: modelData.focused ? root.textColor : "transparent"
+            border.width: modelData.focused ? 0 : 1
+            border.color: root.textColor
+            opacity: modelData.focused ? 1 : 0.45
 
-            Row {
-              required property var modelData
-              spacing: Style.space(8)
+            Text {
+              anchors.centerIn: parent
+              text: modelData.name
+              color: modelData.focused ? Color.popups.background : root.textColor
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+              font.bold: modelData.focused
+              renderType: Text.NativeRendering
+            }
+          }
 
-              Image {
-                anchors.verticalCenter: parent.verticalCenter
-                width: root.iconSize
-                height: root.iconSize
-                fillMode: Image.PreserveAspectFit
-                // Decode at physical pixels, as the tray widget does: sizing a
-                // PNG icon by logical pixels leaves it upscaled on HiDPI.
-                sourceSize.width: Math.round(root.iconSize * Screen.devicePixelRatio)
-                sourceSize.height: Math.round(root.iconSize * Screen.devicePixelRatio)
-                source: root.iconFor(modelData)
-                opacity: modelData.activated ? 1 : 0.75
-              }
+          Column {
+            spacing: Style.space(3)
 
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                width: root.appColWidth
-                text: modelData.appId
-                color: root.accentColor
-                opacity: modelData.activated ? 1 : 0.75
-                font.family: Style.font.family
-                font.pixelSize: Style.font.bodySmall
-                renderType: Text.NativeRendering
-              }
+            Repeater {
+              model: modelData.clients
 
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                width: root.titleColWidth
-                text: modelData.title
-                color: root.textColor
-                opacity: modelData.activated ? 1 : 0.7
-                elide: Text.ElideRight
-                font.family: Style.font.family
-                font.pixelSize: Style.font.bodySmall
-                renderType: Text.NativeRendering
+              Row {
+                required property var modelData
+                spacing: Style.space(8)
+
+                Image {
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: root.iconSize
+                  height: root.iconSize
+                  fillMode: Image.PreserveAspectFit
+                  // Decode at physical pixels, as the tray widget does: sizing a
+                  // PNG icon by logical pixels leaves it upscaled on HiDPI.
+                  sourceSize.width: Math.round(root.iconSize * Screen.devicePixelRatio)
+                  sourceSize.height: Math.round(root.iconSize * Screen.devicePixelRatio)
+                  source: root.iconFor(modelData)
+                  opacity: modelData.activated ? 1 : 0.75
+                }
+
+                Text {
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: root.appColWidth
+                  text: modelData.appId
+                  color: root.accentColor
+                  opacity: modelData.activated ? 1 : 0.75
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.bodySmall
+                  renderType: Text.NativeRendering
+                }
+
+                Text {
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: root.titleColWidth
+                  text: modelData.title
+                  color: root.textColor
+                  opacity: modelData.activated ? 1 : 0.7
+                  elide: Text.ElideRight
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.bodySmall
+                  renderType: Text.NativeRendering
+                }
               }
             }
           }
