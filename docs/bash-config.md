@@ -245,8 +245,8 @@ command pacman -Syu      # 가드 없이 pacman
 
 ### 설치 폴더는 우리 것만이 아니다
 
-`~/.config/minsoft1115/bash/` 에는 다른 도구도 조각을 넣는다 — sudo-pop 이 `--init` 으로
-`sudo-pop.sh` 를 거기 깐다. 그래서 **깐 파일 목록을 `.installed` 에 적어 두고**, 지우는
+`~/.config/minsoft1115/bash/` 에는 다른 도구도 조각을 넣는다 — [sudo-pop](sudo-pop.md) 이
+`--init` 으로 `sudo-pop.sh` 를 거기 깐다. 그래서 **깐 파일 목록을 `.installed` 에 적어 두고**, 지우는
 것은 그 목록에 있는 것만으로 제한한다. 목록에 없는 파일은 이렇게만 말하고 놔둔다.
 
 ```

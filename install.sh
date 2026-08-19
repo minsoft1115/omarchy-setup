@@ -33,6 +33,10 @@
 # the system. Deleting it after the first run would leave a system nobody can
 # update. Re-running this pulls the latest and offers the same list.
 #
+# sudo-pop is the one step whose source is not in this repo -- it has its own,
+# and its step clones and builds that one the same way. It is a Rust build, so
+# it takes minutes where the others take a second.
+#
 # Piped from curl, this clones the repo and then re-runs itself from the clone
 # with the terminal reattached: a script arriving on stdin has no keyboard
 # behind it, and the checklist would read an immediate EOF and select nothing.
@@ -58,8 +62,12 @@ have_tty() {
 # The steps. Order here is the order they run in, whatever order they were
 # picked in: the widget restarts the Omarchy shell, so it goes last and does not
 # blink the bar out from under the steps that follow.
+#
+# sudo-pop sits after bash-config, which puts it before bash-config in the
+# reverse order removal uses -- and that is the order that matters. Its --uninit
+# has to run while the snippet loader bash-config owns is still in ~/.bashrc.
 # ==============================================================================
-STEP_NAMES=(korean bash-config workspaces)
+STEP_NAMES=(korean bash-config sudo-pop workspaces)
 
 # No commas in these: gum takes the preselected set as one comma-separated
 # string matched against the option text, so a comma inside a label splits it
@@ -68,6 +76,7 @@ step_label() {
   case "$1" in
     korean)      echo "Korean input — right Alt for 한/영 · Omarchy menu opens in Latin" ;;
     bash-config) echo "Bash config — Alt-R history picker · fzf search and kill · delta diffs" ;;
+    sudo-pop)    echo "sudo-pop — sudo asks for the password in a popup · built from source" ;;
     workspaces)  echo "Workspaces bar — hold Super to see which apps are where before switching" ;;
   esac
 }
@@ -86,9 +95,15 @@ step_label() {
 FRAG_DIR="$HOME/.config/minsoft1115/hypr"
 BASH_DST="$HOME/.config/minsoft1115/bash"
 PLUGIN_DST="$HOME/.config/omarchy/plugins/minsoft1115.workspaces"
+# sudo-pop lives in its own repository, so there is nothing here to compare a
+# copy against -- see step_state.
+SUDO_POP_URL="https://github.com/minsoft1115/sudo-pop.git"
+SUDO_POP_BIN="$HOME/.local/bin/sudo-pop"
+SUDO_POP_SNIPPET="$BASH_DST/sudo-pop.sh"
+SUDO_POP_REV="${XDG_STATE_HOME:-$HOME/.local/state}/minsoft1115/sudo-pop.rev"
 
 step_state() {
-  local f name
+  local f name rev remote
   case "$1" in
     korean)
       [ -f "$FRAG_DIR/korean-input.lua" ] \
@@ -110,6 +125,20 @@ step_state() {
         cmp -s "$f" "$BASH_DST/$name" || { echo "installed / outdated"; return; }
       done
       ;;
+    sudo-pop)
+      [ -x "$SUDO_POP_BIN" ] && [ -f "$SUDO_POP_SNIPPET" ] \
+        || { echo "not installed"; return; }
+      # Nothing in this repo to compare against, and sudo-pop has no --version
+      # to ask -- anything that is not --init/--uninit is passed through to
+      # sudo. So its installer writes down the commit it built, and that is
+      # what gets compared against upstream. One network round trip, ~0.5s.
+      rev="$(cat "$SUDO_POP_REV" 2>/dev/null || true)"
+      [ -n "$rev" ] || { echo "installed / outdated"; return; }
+      remote="$(timeout 5 git ls-remote "$SUDO_POP_URL" main 2>/dev/null | awk 'NR==1{print $1}')"
+      # Offline, the honest answer is "no idea", and a rebuild takes minutes.
+      # Not a reason to preselect one on a guess.
+      [ -z "$remote" ] || [ "$remote" = "$rev" ] || { echo "installed / outdated"; return; }
+      ;;
     workspaces)
       [ -f "$PLUGIN_DST/manifest.json" ] || { echo "not installed"; return; }
       diff -r -q "$REPO_DIR/minsoft1115.workspaces" "$PLUGIN_DST" >/dev/null 2>&1 \
@@ -127,6 +156,7 @@ step_cmd() {
   case "$1" in
     korean)      echo "scripts/setup-korean.sh" ;;
     bash-config) echo "scripts/install-bash-config.sh install${GUARDS_FLAG:+ $GUARDS_FLAG}" ;;
+    sudo-pop)    echo "scripts/install-sudo-pop.sh install" ;;
     workspaces)  echo "scripts/install-workspaces-widget.sh install" ;;
   esac
 }
@@ -140,6 +170,7 @@ step_remove_cmd() {
   case "$1" in
     korean)      echo "scripts/setup-korean.sh remove" ;;
     bash-config) echo "scripts/install-bash-config.sh remove" ;;
+    sudo-pop)    echo "scripts/install-sudo-pop.sh remove" ;;
     workspaces)  echo "scripts/install-workspaces-widget.sh remove" ;;
   esac
 }
@@ -380,7 +411,7 @@ echo
 if [ "$REMOVE" = 1 ]; then
   rmdir "$HOME/.config/minsoft1115" 2>/dev/null && log "cleaned up empty $HOME/.config/minsoft1115"
   case " ${selected[*]} " in
-    *" bash-config "*) log "shells already open keep what they loaded until they restart" ;;
+    *" bash-config "*|*" sudo-pop "*) log "shells already open keep what they loaded until they restart" ;;
   esac
   if [ "$PURGE" = 1 ] && [ "$DRY_RUN" = 0 ]; then
     log "deleting the clone at $REPO_DIR"
@@ -391,6 +422,6 @@ if [ "$REMOVE" = 1 ]; then
 else
   log "repo kept at $REPO_DIR — edit there and re-run an installer to apply"
   case " ${selected[*]} " in
-    *" bash-config "*) log "for the shell you are in right now: source ~/.bashrc" ;;
+    *" bash-config "*|*" sudo-pop "*) log "for the shell you are in right now: source ~/.bashrc" ;;
   esac
 fi
