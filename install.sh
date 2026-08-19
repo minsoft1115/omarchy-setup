@@ -76,7 +76,7 @@ step_label() {
   case "$1" in
     korean)      echo "Korean input — right Alt for 한/영 · Omarchy menu opens in Latin" ;;
     bash-config) echo "Bash config — Alt-R history picker · fzf search and kill · delta diffs" ;;
-    sudo-pop)    echo "sudo-pop — sudo asks for the password in a popup · built from source" ;;
+    sudo-pop)    echo "sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source" ;;
     workspaces)  echo "Workspaces bar — hold Super to see which apps are where before switching" ;;
   esac
 }

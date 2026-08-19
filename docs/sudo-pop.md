@@ -3,8 +3,10 @@
 > [omarchy-setup](../README.ko.md) 의 스크립트 중 하나.
 
 [sudo-pop](https://github.com/minsoft1115/sudo-pop) 을 소스에서 빌드해 설치한다.
-sudo 비밀번호를 터미널이 아니라 **팝업 창**에서 받는 도구다 — 터미널의 stdin/stdout/stderr 는
-그대로 실제 명령에 닿으므로 `pacman` 의 `[Y/n]` 도, 전체화면 `vim` 도 평소대로 동작한다.
+권한 요청 비밀번호를 터미널이 아니라 **팝업 창**에서 받는다 — **polkit 인증 에이전트**와,
+그 앞에서 순수 명령을 `run0` 로 보내는 **sudo 라우터**다. sudo·run0·디스크 마운트·
+NetworkManager 등 polkit 을 타는 권한 프롬프트가 한 창으로 모인다. 터미널의 stdin/stdout/
+stderr 는 그대로 실제 명령에 닿으므로 `pacman` 의 `[Y/n]` 도 전체화면 `vim` 도 평소대로 동작한다.
 
 **모든 동작이 idempotent** — 여러 번 돌려도 안전하고, 이미 된 것은 `skipped` 로 표시된다.
 
@@ -57,6 +59,18 @@ sudo-pop 은 `curl ... | bash` 설치기를 갖고 있고 그걸 그대로 써�
 Rust 를 따로 설치하지 않는다. 반면 `cc` 는 없으면 그 자리에서 멈춘다 — `base-devel` 은 그룹이고
 설치에 sudo 가 필요한데, 하필 sudo 를 갈아 끼우려는 참에 남의 sudo 를 대신 부를 이유가 없다.
 
+**polkit 에이전트는 한 세션에 하나뿐이다.** Omarchy 셸이 자기 것(`omarchy.polkit`)을 기본으로
+켜 두므로, 그게 켜져 있으면 sudo-pop 에이전트는 **깔리되 enable 되지 않는다** — 그때 팝업은
+sudo 경로에서만 뜨고, run0·디스크 마운트 같은 polkit 프롬프트는 여전히 Omarchy 쪽으로 간다.
+전부 sudo-pop 으로 받으려면 자리를 넘겨야 한다:
+
+```bash
+omarchy plugin disable omarchy.polkit
+sudo-pop --init
+```
+
+`status` 가 지금 어느 상태인지(에이전트가 도는지, omarchy.polkit 이 자리를 쥐고 있는지) 알려준다.
+
 ---
 
 ## 사용법
@@ -84,6 +98,8 @@ binary             : ~/.local/bin/sudo-pop (present, built from 9ac7629)
 on PATH            : yes
 shell alias        : ~/.config/minsoft1115/bash/sudo-pop.sh (present)
 window rules       : ~/.config/minsoft1115/hypr/sudo-pop.lua (present), required by hyprland.lua
+agent              : sudo-pop-agent.service (active / enabled)
+omarchy.polkit     : disabled — the sudo-pop agent can hold the seat
 build tools        : cc(ok) rust(cargo)
 ```
 
@@ -100,7 +116,8 @@ build tools        : cc(ok) rust(cargo)
 | `~/.config/minsoft1115/bash/sudo-pop.sh` | `sudo-pop --init` — `alias sudo='sudo-pop'` |
 | `~/.config/minsoft1115/hypr/sudo-pop.lua` | `sudo-pop --init` — 팝업 창 규칙 (float·center·화면 공유 제외) |
 | `~/.config/hypr/hyprland.lua` | `sudo-pop --init` — `-- sudo-pop:begin/end` 마커로 감싼 require 한 줄 |
-| `$XDG_RUNTIME_DIR/sudo-pop/askpass` | sudo-pop 실행 시 (0700, sudo 가 exec 하는 심볼릭 링크) |
+| `~/.config/systemd/user/sudo-pop-agent.service` | `sudo-pop --init` — polkit 에이전트 (systemd **user** 유닛; 다른 에이전트가 없으면 enable+start) |
+| `$XDG_RUNTIME_DIR/sudo-pop/askpass` | **sudo 경로**에서만 (0700, sudo 가 `-A` 로 exec 하는 심볼릭 링크). run0 경로는 폴킷 헬퍼를 써서 이게 필요 없다 |
 | `~/.local/state/minsoft1115/sudo-pop.rev` | 이 스크립트 — **빌드한 커밋** |
 
 설정은 전부 sudo-pop 자신이 쓴다. 이 스크립트가 따로 만드는 건 `.rev` 하나뿐이다.
@@ -185,6 +202,11 @@ command sudo whoami      # alias 도 함수도 안 거친다
 
 `\sudo` 는 **믿을 수 없다** — 백슬래시는 alias 만 막고 함수는 못 막는데,
 `zz-pkg-guards.sh` 가 `sudo` 를 함수로 만든다 ([bash-config.md](bash-config.md#sudo-pacman-을-잡는-법--그리고-그-대가)).
+
+**순수 명령은 run0 로 간다.** `sudo pacman -Syu` 처럼 옵션 없는 명령은 run0(polkit)로 라우팅돼
+에이전트가 창을 띄운다. `sudo -E`·`sudo VAR=x` 처럼 옵션이나 환경 할당이 붙으면 sudo 로 남고
+같은 창이 뜬다. run0 경로는 `sudoers` 규칙(`NOPASSWD`·`env_keep`)이 적용되지 않는다 —
+`SUDO_POP_RUN0=0` 으로 run0 라우팅을 끌 수 있다.
 
 **이미 열려 있는 셸은 그대로다.** 새 터미널부터 적용되고, 지금 셸에 넣으려면 `source ~/.bashrc`.
 

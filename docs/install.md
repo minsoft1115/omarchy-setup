@@ -41,7 +41,7 @@ curl | bash
 What should be set up? (space toggles, enter confirms)
 > [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
   [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
-  [✓] [not installed]        sudo-pop — sudo asks for the password in a popup · built from source
+  [✓] [not installed]        sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source
   [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
 
@@ -148,7 +148,7 @@ $ ./install.sh --list
 name         state          what it does
 korean       [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
 bash-config  [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
-sudo-pop     [installed / latest]   sudo-pop — sudo asks for the password in a popup · built from source
+sudo-pop     [installed / latest]   sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source
 workspaces   [installed / latest]   Workspaces bar — hold Super to see which apps are where before switching
 
 use with: install.sh --only korean,bash-config,sudo-pop,workspaces
