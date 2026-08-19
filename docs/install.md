@@ -1,6 +1,6 @@
 # install.sh
 
-> [omarchy-setup](../README.md) 의 진입점. 개별 스크립트는 `scripts/` 에 있다.
+> [omarchy-setup](../README.ko.md) 의 진입점. 개별 스크립트는 `scripts/` 에 있다.
 
 clone 부터 선택 설치까지 한 번에 한다. 개별 스크립트를 직접 돌려도 되고, 이건 그것들을
 묶어 주는 얇은 층이다.

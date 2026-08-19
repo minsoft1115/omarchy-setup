@@ -1,6 +1,6 @@
 # install-bash-config.sh
 
-> [omarchy-setup](../README.md) 의 스크립트 중 하나.
+> [omarchy-setup](../README.ko.md) 의 스크립트 중 하나.
 
 저장소의 alias·function 파일을 `~/.config/minsoft1115/bash/` 로 복사하고, `~/.bashrc` 가
 그것들을 읽게 만든다.

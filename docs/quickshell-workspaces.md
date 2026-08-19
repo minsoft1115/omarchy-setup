@@ -1,6 +1,6 @@
 # Omarchy 4.0 — Quickshell workspaces 표시 방식
 
-> [omarchy-setup](../README.md) 참고 문서. 스크립트가 아니라 **현재 시스템이 어떻게 동작하는지**에 대한 조사 기록이다.
+> [omarchy-setup](../README.ko.md) 참고 문서. 스크립트가 아니라 **현재 시스템이 어떻게 동작하는지**에 대한 조사 기록이다.
 
 조사 대상 시스템: Omarchy `4.0.0-1`, Quickshell `0.3.0` (AUR `quickshell-git`), Hyprland, 단일 모니터 `eDP-1`.
 
