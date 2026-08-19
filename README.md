@@ -22,26 +22,16 @@ docs/                      per-script documentation and research notes (Korean)
 
 ## Everything in one line (install.sh)
 
-Clones the repo and then asks what to install.
+Clones the repo, then asks what to install.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/minsoft1115/omarchy-setup/main/install.sh | bash
 ```
 
-To read it before running it, do it in two steps:
+To read it before running it: fetch it with `-o install.sh`, `less` it, then
+`bash install.sh`.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/minsoft1115/omarchy-setup/main/install.sh -o install.sh
-less install.sh
-bash install.sh
-```
-
-It clones (or pulls) into `~/.local/share/minsoft1115/omarchy-setup`, then
-**reattaches the terminal** and re-executes itself from that clone — a script
-arriving through a pipe has stdin that is not a keyboard, so the checklist would
-read EOF and select nothing.
-
-Then a `gum` checklist appears (space toggles, enter confirms):
+A `gum` checklist appears (space toggles, enter confirms):
 
 ```
 What should be set up? (space toggles, enter confirms)
@@ -51,40 +41,8 @@ What should be set up? (space toggles, enter confirms)
   [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
 
-- There are **three states**. The first half says whether it is installed, the
-  second whether it is current. The answer comes from a **byte comparison**
-  between the repo files and the installed copies — a `git pull` that moved the
-  repo ahead, or a source file edited by hand, both show up as `outdated`.
-  sudo-pop is the exception: it has no copy here to compare against, so the
-  commit its binary was built from is compared against its upstream instead
-
-  | State | Meaning | Selected by default |
-  |---|---|---|
-  | `not installed` | never installed | ✓ |
-  | `installed / outdated` | installed, but differs from the repo | ✓ |
-  | `installed / latest` | installed and identical to the repo | — |
-
-  **Only what has work to do is selected.** There is no reason to re-run
-  something already current
-- Every checkbox means the same thing — **"run this now"**. The optional
-  `zz-pkg-guards.sh` is not on the list: the bash step asks about it while it
-  runs, and only when the file is not there yet. If it is already in use it is
-  updated without asking (`--guards` / `--no-guards` answer in advance)
-- The **order is fixed** regardless of what you picked
-  (`korean` → `bash-config` → `sudo-pop` → `workspaces`). The workspaces widget
-  restarts the shell, so it goes last. sudo-pop follows bash-config, which puts
-  it *before* bash-config when removing — its `--uninit` has to run while the
-  snippet loader that bash step owns is still in `~/.bashrc`
-- One failure does not stop the rest; a summary is printed at the end
-
-**The clone is not deleted.** The scripts install *from the repo* (alias
-sources, widget sources, Hyprland snippets), and editing a source and re-running
-is how a change is applied — deleting the clone would remove that path. Running
-it again starts with a pull.
-
-sudo-pop is the one step whose source is not in this repo. It has its own, and
-its step clones and builds that one the same way — a Rust build, so it takes
-minutes where the others take a second.
+Each row says whether it is installed and whether it is current, and **only what
+has work to do starts selected.** One failure does not stop the rest.
 
 | Option | |
 |---|---|
@@ -94,240 +52,52 @@ minutes where the others take a second.
 | `--list` | print what is available and its current state |
 | `--dry-run` | show what would run, run nothing |
 | `--dir <path>` | where to clone |
-| `--remove` | undo. The same checklist appears with **nothing selected**, and steps run in reverse order |
+| `--remove` | undo. The same checklist appears with **nothing selected** |
 | `--purge` | with `--remove`, deletes the clone at the end |
 
-A wrong pick when installing is fixed by running again; a wrong pick when
-removing is not, which is why `--remove` starts with nothing selected.
+The clone is kept at `~/.local/share/minsoft1115/omarchy-setup`: the scripts
+install *from* it, so editing a source there and re-running is how a change is
+applied. Running it again starts with a pull.
 
-See [docs/install.md](docs/install.md) for the details (Korean).
+See [docs/install.md](docs/install.md) for the details (Korean) — the three
+states, what the checkboxes mean, and how removing differs.
 
 ---
 
-# The individual scripts
+# What gets installed
 
-You can run just one, without `install.sh`. They all run from inside the repo,
-because they read their sources from it (`bash/`, `hypr/`,
-`minsoft1115.workspaces/`) — except the sudo-pop one, which builds from a clone
-of its own repository.
+Four things. Each is its own script and can be run on its own; what it touches,
+how it works and what can be tuned is in the linked document.
+
+| | | |
+|---|---|---|
+| **Korean input** | right Alt toggles 한/영 · `Control+space` freed for tmux's prefix · the Super+Space menu opens in Latin | `setup-korean.sh` · [docs](docs/setup-korean.md) |
+| **Bash config** | Alt-R history picker · fzf search and kill · delta diffs · optional guards that ask before `pacman` or `yay` runs | `install-bash-config.sh` · [docs](docs/bash-config.md) |
+| **sudo-pop** | the sudo password prompt in a popup window instead of the terminal. [Its own repository](https://github.com/minsoft1115/sudo-pop) — this step clones and builds it | `install-sudo-pop.sh` · [docs](docs/sudo-pop.md) |
+| **Workspaces bar** | hold Super to see which apps are where before switching · the focused workspace keeps its number | `install-workspaces-widget.sh` · [docs](docs/workspaces-widget.md) |
+
+![The workspaces widget and the Super-hold preview](screenshots/workspaces-widget.png)
+
+To run one without the checklist:
 
 ```bash
 git clone https://github.com/minsoft1115/omarchy-setup.git
 cd omarchy-setup
-```
-
-If you have run `install.sh` once, the clone is already at
-`~/.local/share/minsoft1115/omarchy-setup`.
-
----
-
-## setup-korean.sh
-
-Installs and configures fcitx5 + hangul for Korean input: binds right Alt as the
-Hangul/Latin toggle, removes the `Control+space` trigger that collides with
-tmux's prefix, and makes the Super+Space menu always open in Latin mode.
-
-```bash
-./scripts/setup-korean.sh
-```
-
-To re-apply only the key settings on a machine that is already set up (no
-packages, no sudo):
-
-```bash
-./scripts/setup-korean.sh --light
-```
-
-To undo — only what this script created; the fcitx5 config is left alone:
-
-```bash
-./scripts/setup-korean.sh remove
-```
-
-It **does not edit Hyprland's own files.** Lua snippets go into
-`~/.config/minsoft1115/hypr/`, and only a `require` line wrapped in markers is
-added to `hyprland.lua` (the same approach as
-`install-workspaces-widget.sh`).
-
-This script's console output is in Korean, as is
-[docs/setup-korean.md](docs/setup-korean.md) — it is the one part of this repo
-written for a Korean-speaking user.
-
----
-
-## install-bash-config.sh
-
-Copies the alias and function files in `bash/` to
-`~/.config/minsoft1115/bash/` and makes `~/.bashrc` load them. The loader is a
-**loop over the folder** rather than one source line per file, so adding a file
-to `bash/` later needs an `install` and nothing else — `~/.bashrc` never has to
-change again.
-
-### What you get
-
-| File | |
-|---|---|
-| `bash/aliases.sh` | `cat` → `bat -p` (highlighting), `grep` → `rg` |
-| `bash/fhistory.sh` | `fhistory` — **Alt-R** picks a line from history with fzf and **puts it on the prompt without running it** (you press Enter yourself). The list keeps `history` order, and typing a query **moves the cursor to the best match instead of filtering or reordering** the lines. Ctrl-Y copies the command. Ctrl-R is left to fzf's own widget |
-| `bash/fkill.sh` | `fkill` — pick one of your processes with fzf and kill it. Takes a signal: `fkill -9` |
-| `bash/fsearch.sh` | `fsearch` — browse a content search (rg) through fzf. `fsearch TODO` / `fsearch md TODO` (by extension), Enter opens `$EDITOR`, Ctrl-Y copies the path |
-| `bash/gdiff.sh` | `gdiff` — pipe `git diff` through `delta`. Arguments pass straight through |
-| `bash/zz-pkg-guards.sh` | **optional** — before `pacman` or `yay` runs, offers the omarchy command that replaces it and **asks whether to run it at all**. Read-only operations (`-Q`, `-Ss`, `-Si` …) are never asked about |
-
-`install` **asks before installing** `zz-pkg-guards.sh` (`gum confirm`), since
-Omarchy ships guards of its own; if it is already there it is updated without
-asking. The files load *after* Omarchy's own bash rc, so on a name collision
-these win, and they load in **filename order**. The tools they need
-(`git-delta`, `bat`, `ripgrep`, `fzf`, `gum`) are installed first, through
-`omarchy pkg`.
-
-The guards used to answer `pacman` and `yay` with a reminder and **refuse to run
-them**. There is always the one time you do mean pacman, and a wall makes you
-retype the whole line with `command pacman` in front of it — so they ask
-instead, with the recommended command one keypress away.
-
-```
-$ sudo pacman -S ripgrep
-Omarchy manages packages on this machine.
-> omarchy pkg add ripgrep
-  run as typed: sudo pacman -S ripgrep
-  cancel
-```
-
-Catching `sudo pacman` needs `sudo` to be a function too, and **aliases are
-expanded before functions are looked up**. So this file is named to load
-**last** (the `zz-` prefix), and it takes over whatever `alias sudo=...` is in
-place by then (sudo-pop installs one) and calls it — neither tool has to know
-the other exists. See
-[docs/bash-config.md](docs/bash-config.md#선택-파일) (Korean).
-
-```bash
 ./scripts/install-bash-config.sh install
 ```
 
-A process cannot change the shell that started it. New terminals just get them;
-to load them into the shell you are sitting in, **source the script instead of
-running it**:
-
-```bash
-source ./scripts/install-bash-config.sh install
-```
-
-To undo:
-
-```bash
-./scripts/install-bash-config.sh remove
-```
-
-The install folder `~/.config/minsoft1115/bash/` is **not ours alone** —
-sudo-pop drops its own snippet there. So the files this script installs are
-written down in `.installed`, and **only files on that list** are ever deleted.
-Neither the cleanup during `install` nor `remove` touches anyone else's file.
-
-See [docs/bash-config.md](docs/bash-config.md) for the details (Korean).
-
----
-
-## install-sudo-pop.sh
-
-Builds and installs [sudo-pop](https://github.com/minsoft1115/sudo-pop): the
-sudo password prompt moves out of the terminal into a popup window, so the
-terminal's stdin, stdout and stderr reach the real command untouched. `pacman`'s
-`[Y/n]` still works, and so does a full-screen `vim`.
-
-```bash
-./scripts/install-sudo-pop.sh install
-```
-
-This is the one step that **builds from source**, and the one whose source is
-not in this repo. It clones sudo-pop to `~/.local/share/minsoft1115/sudo-pop`,
-pinned to `main`, and hands the build to that repo's own `install.sh` — run from
-inside a checkout it builds the checkout and downloads nothing.
-
-A clone rather than upstream's `curl | bash` one-liner, because the checklist
-has to answer *"is it current"* without building for minutes to find out — and
-**sudo-pop has no `--version` to ask**: every argument that is not
-`--init`/`--uninit` is passed through to sudo. So the commit that was built is
-written down (`~/.local/state/minsoft1115/sudo-pop.rev`) and compared against
-upstream. A binary installed by hand has no such record and reads as `outdated`:
-building once is the only way to make it knowable.
-
-It needs a C linker — **without `cc` it stops** (`omarchy pkg add base-devel`).
-Rust it does not install: `cargo` is used if present, otherwise `mise`, which
-reads the toolchain pinned in sudo-pop's `mise.toml`, and mise ships with
-Omarchy.
-
-| Option | |
-|---|---|
-| `--force` | rebuild even when the checkout is already what is installed |
-| `--purge` | with `remove`, delete the clone and its build tree too |
-| `--prefix <path>` | where the binary goes (default `~/.local/bin`) |
-
-Removing is handed back to the same upstream script, which has an
-`--uninstall`: it runs `--uninit` before deleting the binary — the alias
-outlives the file it points at — removes those files itself when the binary is
-already gone, leaves a `begin` marker with no `end` alone rather than eating a
-config, and takes out the askpass symlink under `$XDG_RUNTIME_DIR`. Only when
-the checkout itself is missing does this script do the removing.
-
-```bash
-./scripts/install-sudo-pop.sh remove
-```
-
-It shares `~/.config/minsoft1115/bash/` and the `~/.bashrc` loader block with
-the bash step, and both sides already know it: the same marker block is written
-by whichever gets there first, `install-bash-config.sh` only ever deletes files
-on its own `.installed` list, and `sudo-pop --uninit` leaves the loader alone.
-`zz-pkg-guards.sh` takes over whatever `alias sudo=...` is in place when it
-loads — which is this one.
-
-See [docs/sudo-pop.md](docs/sudo-pop.md) for the details (Korean).
-
----
-
-## install-workspaces-widget.sh
-
-The point is **seeing what is on a workspace before deciding to switch to it.**
-Hold Super and the workspaces that hold windows appear, each with its window
-list, which replaces going back and forth by number from memory. As a bonus the
-focused workspace keeps **its number** instead of being covered by a glyph.
-
-![The workspaces widget and the Super-hold preview](screenshots/workspaces-widget.png)
-
-In the bar, 1 is focused (inverted number), 2 has windows, and 3–5 are empty and
-dimmed. Holding Super brings up the popup below it, listing each workspace's
-windows.
-
-It installs the Quickshell plugin and the Hyprland key binding together.
-
-```bash
-./scripts/install-workspaces-widget.sh install
-```
-
-To undo:
-
-```bash
-./scripts/install-workspaces-widget.sh revert
-```
-
-See [docs/workspaces-widget.md](docs/workspaces-widget.md) for the details
-(Korean).
+They run from inside the repo, because they install *from* it. Most take
+`status` (the default), `install` and `remove`; `--help` on any of them says the
+rest. If you have run `install.sh` once, the clone is already at
+`~/.local/share/minsoft1115/omarchy-setup`.
 
 ---
 
 ## Documentation
 
-**The files under `docs/` are written in Korean.** This README covers what the
-scripts do and how to run them; those go into how each one works, what it
-touches, and why it was built that way.
-
-| Document | |
-|---|---|
-| [docs/install.md](docs/install.md) | `install.sh` — bootstrap, the checklist, undoing |
-| [docs/setup-korean.md](docs/setup-korean.md) | `setup-korean.sh` — step by step, files touched, troubleshooting |
-| [docs/bash-config.md](docs/bash-config.md) | `install-bash-config.sh` — the loader, the optional file, the load-order trap |
-| [docs/sudo-pop.md](docs/sudo-pop.md) | `install-sudo-pop.sh` — why a clone, what it builds, how "current" is decided |
-| [docs/workspaces-widget.md](docs/workspaces-widget.md) | `install-workspaces-widget.sh` — what changes, the layout, tuning |
+**The files under `docs/` are written in Korean.** This README says what gets
+installed and how to run it; those go into how each piece works, what it
+touches, and why it was built that way — linked from the table above.
 
 ### Research notes
 
