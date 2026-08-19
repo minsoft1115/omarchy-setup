@@ -31,6 +31,7 @@ Super 를 누르고 있으면 각 워크스페이스에 뭐가 떠 있는지 보
 ```
 [1]  ▸ alacritty  user@host: ~/projects
      ▸ alacritty  nvim README.md
+     ────────────────────────────────
  2   ◉ chromium   Example Domain
 ```
 
@@ -143,6 +144,18 @@ Lua 조각을 `~/.config/hypr/` 가 아니라 별도 네임스페이스에 두�
 |---|---|---|
 | `titleMaxWidth` | `space(460)` | 제목 최대 폭, 넘으면 말줄임 |
 | `iconSize` | `space(14)` | 앱 아이콘 크기 |
+| 구분선 `opacity` | `0.15` | 워크스페이스 사이 가로선의 진하기 |
+| 그룹 간격 | `space(8)` ×2 | 구분선 위아래 여백 (Column 두 곳의 `spacing`) |
+
+구분선은 **첫 그룹 위에는 안 그린다** (`index > 0`). 안 보이는 항목은 Column 이 배치에서
+빼므로 첫 그룹의 간격은 그대로다.
+
+진하기를 올릴 때 주의할 것: 창 제목이 0.7~1.0, 비활성 배지가 0.45 다. 구분선이 그보다 밝으면
+구조가 아니라 **내용 한 줄**로 읽힌다. 0.5 로 찍어 보고 그래서 0.15 로 내렸다. 올려도 0.2 까지다.
+
+선의 폭은 `contentWidth` 로 **직접 계산한다.** `parent.width` 에 묶으면 바인딩 루프다 —
+`PopupCard` 가 이 카드의 `implicitWidth` 로 자기 폭을 정하고, 그 폭이 `anchors.fill` 로 다시
+자식에게 내려오기 때문이다.
 
 ### 바 — `minsoft1115.workspaces/Workspaces.qml`
 
