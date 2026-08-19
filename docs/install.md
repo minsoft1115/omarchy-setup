@@ -65,12 +65,12 @@ What should be set up? (space toggles, enter confirms)
   | `korean` | 조각 파일 + `hyprland.lua` 의 마커 | `hypr/korean-input.lua` |
   | `bash-config` | `~/.bashrc` 의 마커 | `bash/*.sh` 전부 (설치본에 없는 파일도 차이로 본다) |
   | `workspaces` | 플러그인 `manifest.json` | 플러그인 폴더 전체 + `hypr/workspace-peek.lua` |
-  | `pkg-guards` | 설치본에 파일 존재 | `bash/pkg-guards.sh` |
+  | `zz-pkg-guards` | 설치본에 파일 존재 | `bash/zz-pkg-guards.sh` |
 
   `korean-bindings.lua` 는 머신마다 생성되는 파일이라 비교에서 뺀다 — 명령 문자열이 Omarchy
   기본값에서 나오므로 저장소 쪽에 대응하는 원본이 없다. 스텝을 다시 돌리면 어차피 다시 만든다.
 
-  선택 파일이 빠져 있는 것은 **차이가 아니라 선택**이라, `bash-config` 는 `pkg-guards.sh` 가
+  선택 파일이 빠져 있는 것은 **차이가 아니라 선택**이라, `bash-config` 는 `zz-pkg-guards.sh` 가
   없다고 `installed / outdated` 가 되지 않는다.
 
 - **모든 체크박스가 같은 뜻이다** — "이번에 실행한다". 한때 선택 파일 `pkg-guards` 를
@@ -94,14 +94,14 @@ What should be set up? (space toggles, enter confirms)
 
 ### 선택 파일은 그 단계가 스스로 묻는다
 
-[`pkg-guards.sh`](bash-config.md#선택-파일) 는 체크리스트에 없다. bash 단계가 도는 중에,
+[`zz-pkg-guards.sh`](bash-config.md#선택-파일) 는 체크리스트에 없다. bash 단계가 도는 중에,
 **그 파일이 아직 없을 때만** 물어본다.
 
 ```
 == Bash config — Alt-R history picker · fzf search and kill · delta diffs ==
-[+] packages: installing git-delta bat ripgrep fzf
-┌ Install pkg-guards.sh?
-│ Guards for the Arch package managers, and the sudo alias they need.
+[+] packages: installing git-delta bat ripgrep fzf gum
+┌ Install zz-pkg-guards.sh?
+│ Ask before pacman or yay runs, and name the omarchy command that replaces it.
 │   Yes    No
 ```
 
@@ -117,7 +117,7 @@ What should be set up? (space toggles, enter confirms)
 |---|---|
 | `--all` | 묻지 않고 전부 |
 | `--only korean,bash-config` | 이름으로 지정 (`--list` 의 첫 열) |
-| `--guards` / `--no-guards` | pkg-guards 답을 미리 정함 |
+| `--guards` / `--no-guards` | `zz-pkg-guards.sh` 답을 미리 정함 |
 | `--list` | 설치 가능한 것과 현재 상태만 출력 |
 | `--dry-run` | 무엇이 돌지만 보여 주고 실행 안 함 |
 | `--remove` | 되돌리기 (아래) |
