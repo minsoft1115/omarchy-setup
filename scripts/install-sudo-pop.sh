@@ -275,10 +275,25 @@ remove_by_hand() {
   if hypr_block_present; then
     if grep -qF -e "$HYPR_END" "$HYPR_MAIN"; then
       backup "$HYPR_MAIN"
-      sed -i "/^$HYPR_BEGIN$/,/^$HYPR_END$/d" "$HYPR_MAIN"
-      # Drop the blank line the block was padded with, so repeated cycles do not
-      # slowly grow a gap at the end of the file.
-      sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$HYPR_MAIN"
+      # Cut the block and the one blank line --init padded it with — and
+      # nothing more. Trimming every trailing blank line, as this used to,
+      # also ate blank lines the file ended with beforehand; cat-over keeps
+      # the file's permissions and inode.
+      awk -v b="$HYPR_BEGIN" -v e="$HYPR_END" '
+        { line[NR] = $0 }
+        END {
+          for (i = 1; i <= NR; i++) {
+            if (line[i] == b) {
+              if (n > 0 && keep[n] == "") n--
+              while (i <= NR && line[i] != e) i++
+              continue
+            }
+            keep[++n] = line[i]
+          }
+          for (i = 1; i <= n; i++) print keep[i]
+        }' "$HYPR_MAIN" >"$HYPR_MAIN.tmp.$$" \
+        && cat "$HYPR_MAIN.tmp.$$" >"$HYPR_MAIN" \
+        && rm -f "$HYPR_MAIN.tmp.$$"
       log "removed the window rules from $HYPR_MAIN"
       command -v hyprctl >/dev/null 2>&1 && hyprctl reload >/dev/null 2>&1 || true
     else

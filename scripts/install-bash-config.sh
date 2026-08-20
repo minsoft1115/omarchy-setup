@@ -100,7 +100,11 @@ if (return 0 2>/dev/null); then
     msb_status=$?
   fi
   unset msb_rc
-  return "$msb_status"
+  # return still needs the status once the variables are gone, so park it in
+  # the positional parameters (ours while sourced, not the caller's).
+  set -- "$msb_status"
+  unset msb_status
+  return "$1"
 fi
 
 set -euo pipefail
@@ -414,10 +418,26 @@ EOF
 msb_remove_loader() {
   msb_loader_present || { msb_log ".bashrc has no loader — skipped"; return 0; }
   msb_backup "$MSB_BASHRC"
-  sed -i "/$MSB_BEGIN/,/$MSB_END/d" "$MSB_BASHRC"
-  # Drop the blank line the block was padded with, so repeated install/remove
-  # cycles do not slowly grow a gap at the end of the file.
-  sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$MSB_BASHRC"
+  # Cut the block and the one blank line install padded it with — and nothing
+  # more. Trimming every trailing blank line, as this used to, also ate blank
+  # lines the file ended with before install ever ran, so a round trip was not
+  # byte-identical. A begin marker with no end takes the rest of the file, as
+  # the old sed range did; cat-over keeps the file's permissions and inode.
+  awk -v b="$MSB_BEGIN" -v e="$MSB_END" '
+    { line[NR] = $0 }
+    END {
+      for (i = 1; i <= NR; i++) {
+        if (line[i] == b) {
+          if (n > 0 && keep[n] == "") n--
+          while (i <= NR && line[i] != e) i++
+          continue
+        }
+        keep[++n] = line[i]
+      }
+      for (i = 1; i <= n; i++) print keep[i]
+    }' "$MSB_BASHRC" >"$MSB_BASHRC.tmp.$$" \
+    && cat "$MSB_BASHRC.tmp.$$" >"$MSB_BASHRC" \
+    && rm -f "$MSB_BASHRC.tmp.$$"
   msb_log "removed the loader from $MSB_BASHRC"
 }
 
