@@ -67,7 +67,7 @@ have_tty() {
 # reverse order removal uses -- and that is the order that matters. Its --uninit
 # has to run while the snippet loader bash-config owns is still in ~/.bashrc.
 # ==============================================================================
-STEP_NAMES=(korean bash-config sudo-pop workspaces)
+STEP_NAMES=(korean bash-config lazygit sudo-pop workspaces)
 
 # No commas in these: gum takes the preselected set as one comma-separated
 # string matched against the option text, so a comma inside a label splits it
@@ -76,6 +76,7 @@ step_label() {
   case "$1" in
     korean)      echo "Korean input — right Alt for 한/영 · Omarchy menu opens in Latin" ;;
     bash-config) echo "Bash config — Alt-R history picker · fzf search and kill · delta diffs" ;;
+    lazygit)     echo "Lazygit — delta renders the diffs" ;;
     sudo-pop)    echo "sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source" ;;
     workspaces)  echo "Workspaces bar — hold Super to see which apps are where before switching" ;;
   esac
@@ -95,6 +96,8 @@ step_label() {
 FRAG_DIR="$HOME/.config/minsoft1115/hypr"
 BASH_DST="$HOME/.config/minsoft1115/bash"
 PLUGIN_DST="$HOME/.config/omarchy/plugins/minsoft1115.workspaces"
+# Omarchy ships this file empty, so empty counts as "not installed".
+LAZYGIT_DST="$HOME/.config/lazygit/config.yml"
 # sudo-pop lives in its own repository, so there is nothing here to compare a
 # copy against -- see step_state.
 SUDO_POP_URL="https://github.com/minsoft1115/sudo-pop.git"
@@ -134,6 +137,15 @@ step_state() {
         done <"$BASH_DST/.installed"
       fi
       ;;
+    lazygit)
+      # -s, not -f: the file exists empty on a stock Omarchy. A non-empty file
+      # that is not ours reads "outdated" — install backs it up and replaces
+      # it, and the reinstall is what makes its state knowable (the same call
+      # sudo-pop makes for a binary with no recorded commit).
+      [ -s "$LAZYGIT_DST" ] || { echo "not installed"; return; }
+      cmp -s "$REPO_DIR/lazygit/config.yml" "$LAZYGIT_DST" \
+        || { echo "installed / outdated"; return; }
+      ;;
     sudo-pop)
       [ -x "$SUDO_POP_BIN" ] && [ -f "$SUDO_POP_SNIPPET" ] \
         || { echo "not installed"; return; }
@@ -165,6 +177,7 @@ step_cmd() {
   case "$1" in
     korean)      echo "scripts/setup-korean.sh" ;;
     bash-config) echo "scripts/install-bash-config.sh install${GUARDS_FLAG:+ $GUARDS_FLAG}" ;;
+    lazygit)     echo "scripts/install-lazygit.sh install" ;;
     sudo-pop)    echo "scripts/install-sudo-pop.sh install" ;;
     workspaces)  echo "scripts/install-workspaces-widget.sh install" ;;
   esac
@@ -179,6 +192,7 @@ step_remove_cmd() {
   case "$1" in
     korean)      echo "scripts/setup-korean.sh remove" ;;
     bash-config) echo "scripts/install-bash-config.sh remove" ;;
+    lazygit)     echo "scripts/install-lazygit.sh remove" ;;
     sudo-pop)    echo "scripts/install-sudo-pop.sh remove" ;;
     workspaces)  echo "scripts/install-workspaces-widget.sh remove" ;;
   esac
