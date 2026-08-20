@@ -16,7 +16,7 @@
 #   --only <a,b,c>     Select these by name (see --list)
 #   --guards / --no-guards
 #                      Answer the bash step's optional zz-pkg-guards.sh question
-#                      advance. Without either, that step asks for itself -- and
+#                      in advance. Without either, that step asks for itself -- and
 #                      only when the file is not already installed
 #   --dir <path>       Where the repo lives (default ~/.local/share/minsoft1115/omarchy-setup)
 #   --dry-run          Show what would run, run nothing
@@ -124,6 +124,15 @@ step_state() {
                                       echo "installed / outdated"; return; }
         cmp -s "$f" "$BASH_DST/$name" || { echo "installed / outdated"; return; }
       done
+      # A file gone from the repo but still installed by that step is work for
+      # its install to do. .installed is the list of what the step owns, and
+      # checking it keeps this answer equal to the script's own "in sync".
+      if [ -f "$BASH_DST/.installed" ]; then
+        while IFS= read -r name; do
+          [ -n "$name" ] || continue
+          [ -f "$REPO_DIR/bash/$name" ] || { echo "installed / outdated"; return; }
+        done <"$BASH_DST/.installed"
+      fi
       ;;
     sudo-pop)
       [ -x "$SUDO_POP_BIN" ] && [ -f "$SUDO_POP_SNIPPET" ] \
@@ -227,7 +236,16 @@ DRY_RUN=0
 REMOVE=0
 PURGE=0
 
-usage() { awk 'NR<3{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "${SELF:-$0}"; }
+# Piped from curl there is no script file to read the help header out of, so
+# say the short version instead of pointing awk at "bash".
+usage() {
+  if [ -n "$SELF" ] && [ -f "$SELF" ]; then
+    awk 'NR<3{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$SELF"
+  else
+    echo "usage: install.sh [--all] [--only a,b] [--guards|--no-guards] [--list] [--dry-run] [--remove [--purge]] [--dir <path>]"
+    echo "the full help is in the script header — run --help from a clone"
+  fi
+}
 
 ARGS=("$@")
 while [ "$#" -gt 0 ]; do
@@ -268,12 +286,8 @@ fi
 selected=()
 
 if [ "$REMOVE" = 1 ]; then
-  VERB="remove"
-  PRESELECT=""
   MENU_HEADER="What should be removed? (space toggles, enter confirms)"
 else
-  VERB="install"
-  PRESELECT='*'
   MENU_HEADER="What should be set up? (space toggles, enter confirms)"
 fi
 

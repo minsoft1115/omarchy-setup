@@ -114,6 +114,31 @@ backup() { [ -f "$1" ] || return 0; cp -a "$1" "$1.bak.$TS"; log "백업: $1.bak
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
+# 마커 블록을, 설치가 블록 앞에 넣은 빈 줄 하나와 함께 제거한다.
+#   "파일 끝의 빈 줄 전부 삭제" 방식은 원본에 원래 있던 빈 줄까지 먹어서
+#   install→remove 왕복이 원본과 달라졌다. end 마커가 없으면 예전 sed 범위와
+#   같게 파일 끝까지 지운다. cat 덮어쓰기는 파일 권한/inode 를 유지한다.
+# ------------------------------------------------------------------------------
+remove_marker_block() {
+  local file="$1" b="$2" e="$3"
+  awk -v b="$b" -v e="$e" '
+    { line[NR] = $0 }
+    END {
+      for (i = 1; i <= NR; i++) {
+        if (line[i] == b) {
+          if (n > 0 && keep[n] == "") n--
+          while (i <= NR && line[i] != e) i++
+          continue
+        }
+        keep[++n] = line[i]
+      }
+      for (i = 1; i <= n; i++) print keep[i]
+    }' "$file" >"$file.tmp.$$" \
+    && cat "$file.tmp.$$" >"$file" \
+    && rm -f "$file.tmp.$$"
+}
+
+# ------------------------------------------------------------------------------
 # 현재 적용 중인 kb_options 를 얻는다 (korean:ralt_hangul 은 제거한 "베이스" 값).
 #   Lua 설정에서는 kb_options 를 지정하면 Omarchy 기본값이 통째로 교체되므로,
 #   기본값을 그대로 유지하려면 현재 값을 읽어서 함께 적어 줘야 한다.
@@ -208,9 +233,7 @@ sync_hypr_requires() {
 
   backup "$HYPR_MAIN_LUA"
   if grep -qF -e "$MARK_BEGIN" "$HYPR_MAIN_LUA"; then
-    sed -i "/^$MARK_BEGIN$/,/^$MARK_END$/d" "$HYPR_MAIN_LUA"
-    # 블록이 남긴 빈 줄 정리 (반복 실행해도 파일 끝이 벌어지지 않게)
-    sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$HYPR_MAIN_LUA"
+    remove_marker_block "$HYPR_MAIN_LUA" "$MARK_BEGIN" "$MARK_END"
   fi
   [ -n "$want" ] || { log "hyprland.lua: 넣을 require 없음 — 블록 제거"; return 0; }
 
@@ -260,13 +283,16 @@ apply_ralt_hangul() {
 #   버전마다 명령이 다르므로(구: omarchy-launch-walker) 하드코딩 대신 읽어 온다.
 # ------------------------------------------------------------------------------
 omarchy_default_bind_cmd() {
-  local line f
+  local line f cmd
   for f in "$OMARCHY_DEFAULTS"/bindings/*.lua "$OMARCHY_DEFAULTS"/bindings.lua; do
     [ -f "$f" ] || continue
     line="$(grep -F "o.bind(\"$1\"," "$f" 2>/dev/null | head -1)" || true
     [ -n "$line" ] || continue
-    # 마지막 따옴표 문자열 = 실행 명령
-    printf '%s' "$line" | sed -E 's/.*,[[:space:]]*"([^"]*)"[[:space:]]*\).*/\1/'
+    # 마지막 따옴표 문자열 = 실행 명령. -n/p 라 매치될 때만 출력한다 — 매치
+    # 실패에 sed 가 줄 전체를 돌려주면 그게 그대로 바인딩 명령으로 박힌다.
+    cmd="$(printf '%s' "$line" | sed -nE 's/.*,[[:space:]]*"([^"]*)"[[:space:]]*\).*/\1/p')"
+    [ -n "$cmd" ] || continue
+    printf '%s' "$cmd"
     return 0
   done
   return 1
@@ -322,12 +348,16 @@ fcitx_profile_clean() {
 # ------------------------------------------------------------------------------
 # fcitx5 TriggerKeys 가 이미 정리됐는지 (Control+space 없고 Hangul 있음) → 0=정리됨
 #   config 파일이 없으면 "정리 필요"(1) 로 간주.
+#   검사도 패치도 [Hotkey/TriggerKeys] 섹션만 본다. 파일 전체를 검사하면 다른
+#   섹션의 Control+space 에 걸려 영원히 "정리 필요" 가 되고, 매 실행이 백업을
+#   만들며 fcitx5 를 재시작한다 — 고치지도 않을 것에 걸려서.
 # ------------------------------------------------------------------------------
 fcitx_triggerkeys_clean() {
   [ -f "$FCITX_CONF" ] || return 1
-  ! grep -qiE '^[0-9]+[[:space:]]*=[[:space:]]*Control\+space' "$FCITX_CONF" \
-    && awk '/^\[Hotkey\/TriggerKeys\]/{f=1;next} /^\[/{f=0} f' "$FCITX_CONF" \
-       | grep -qi '=[[:space:]]*Hangul[[:space:]]*$'
+  local tk
+  tk="$(awk '/^\[Hotkey\/TriggerKeys\]/{f=1;next} /^\[/{f=0} f' "$FCITX_CONF")"
+  ! printf '%s\n' "$tk" | grep -qiE '^[0-9]+[[:space:]]*=[[:space:]]*Control\+space' \
+    && printf '%s\n' "$tk" | grep -qi '=[[:space:]]*Hangul[[:space:]]*$'
 }
 
 # ------------------------------------------------------------------------------
@@ -454,9 +484,11 @@ run_remove() {
   # 1) hyprland.lua 의 require 블록
   if [ -f "$HYPR_MAIN_LUA" ] && grep -qF -e "$MARK_BEGIN" "$HYPR_MAIN_LUA"; then
     backup "$HYPR_MAIN_LUA"
-    sed -i "/^$MARK_BEGIN$/,/^$MARK_END$/d" "$HYPR_MAIN_LUA"
-    sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$HYPR_MAIN_LUA"
+    remove_marker_block "$HYPR_MAIN_LUA" "$MARK_BEGIN" "$MARK_END"
     log "hyprland.lua 에서 require 블록 제거"
+    # 지운 것도 변경이다 — 이걸 안 세우면 아래 reload_hyprland 가 건너뛰어,
+    # 우측 Alt·재바인딩이 재로그인 전까지 세션에 그대로 남는다.
+    HYPR_CHANGED=1
   else
     log "hyprland.lua: require 블록 없음 — 건너뜀"
   fi
@@ -516,10 +548,14 @@ run_full() {
   # 1) 패키지 설치
   # ----------------------------------------------------------------------------
   log "1) 패키지 확인/설치: ${PKGS[*]}"
+  # 실패해도 죽지 않는다 (set -e) — 설정 단계는 패키지 없이도 의미가 있고,
+  # 패키지만 따로 깔고 다시 돌리면 나머지는 건너뜀으로 지나간다.
   if command -v omarchy >/dev/null 2>&1; then
-    omarchy pkg add "${PKGS[@]}"        # 이미 있으면 무시, 없으면 설치
+    omarchy pkg add "${PKGS[@]}" \
+      || warn "패키지 설치 실패 — 설정 단계는 계속 진행 (따로 깔고 다시 실행)"
   elif command -v pacman >/dev/null 2>&1; then
-    sudo pacman -S --needed --noconfirm "${PKGS[@]}"
+    sudo pacman -S --needed --noconfirm "${PKGS[@]}" \
+      || warn "패키지 설치 실패 — 설정 단계는 계속 진행 (따로 깔고 다시 실행)"
   else
     warn "omarchy/pacman 를 못 찾음 — 패키지 설치를 건너뜀 (수동 설치 필요)"
   fi
@@ -551,6 +587,7 @@ EOF
     if [ -f "$XDG_AUTOSTART" ] && grep -qx 'Hidden=true' "$XDG_AUTOSTART"; then
       log "3) 자동시작 중복 방지: 이미 설정됨 — 건너뜀"
     else
+      backup "$XDG_AUTOSTART"   # 있었다면 우리가 만든 파일이 아닐 수 있다
       printf '[Desktop Entry]\nHidden=true\n' > "$XDG_AUTOSTART"
       log "3) 자동시작 중복 방지: $XDG_AUTOSTART (Hidden=true)"
     fi

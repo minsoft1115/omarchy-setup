@@ -284,8 +284,10 @@ __pkg_guard() {
   case "$answer" in
     omarchy)
       # Package names carry no spaces, so splitting the suggestion into words is
-      # enough to run it. omarchy asks for root itself -- never under sudo here.
-      local -a cmd=($suggested)
+      # enough to run it -- read -ra splits without glob-expanding an operand
+      # like 'foo*'. omarchy asks for root itself -- never under sudo here.
+      local -a cmd
+      read -ra cmd <<<"$suggested"
       command "${cmd[@]}"
       ;;
     typed)

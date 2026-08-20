@@ -298,10 +298,26 @@ install_binding() {
 # this too, to replace a block whose contents are out of date.
 remove_binding_block() {
   bind_line_present || return 0
-  sed -i "/^$BIND_BEGIN$/,/^$BIND_END$/d" "$HYPR_MAIN"
-  # Drop the blank line the block was padded with, so repeated
-  # install/revert cycles do not slowly grow a gap at the end of the file.
-  sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$HYPR_MAIN"
+  # Cut the block and the one blank line install padded it with — and nothing
+  # more. Trimming every trailing blank line, as this used to, also ate blank
+  # lines the file ended with before install ever ran. A begin marker with no
+  # end takes the rest of the file, as the old sed range did; cat-over keeps
+  # the file's permissions and inode.
+  awk -v b="$BIND_BEGIN" -v e="$BIND_END" '
+    { line[NR] = $0 }
+    END {
+      for (i = 1; i <= NR; i++) {
+        if (line[i] == b) {
+          if (n > 0 && keep[n] == "") n--
+          while (i <= NR && line[i] != e) i++
+          continue
+        }
+        keep[++n] = line[i]
+      }
+      for (i = 1; i <= n; i++) print keep[i]
+    }' "$HYPR_MAIN" >"$HYPR_MAIN.tmp.$$" \
+    && cat "$HYPR_MAIN.tmp.$$" >"$HYPR_MAIN" \
+    && rm -f "$HYPR_MAIN.tmp.$$"
 }
 
 remove_binding_line() {
@@ -309,7 +325,10 @@ remove_binding_line() {
   backup "$HYPR_MAIN"
   remove_binding_block
   log "removed the require line from $HYPR_MAIN"
+  # Not the last word of the function: with no hyprctl on the machine this
+  # && list returns 1, and under set -e that kills the whole revert.
   command -v hyprctl >/dev/null 2>&1 && hyprctl reload >/dev/null 2>&1
+  return 0
 }
 
 # Source directory of the stock widget, for `diff`.
@@ -383,9 +402,22 @@ do_install() {
 # ==============================================================================
 do_revert() {
   need jq
-  require_shell
 
+  # The Hyprland side never needs the shell, so it comes out first — a shell
+  # that is down should not leave the binding behind too.
   remove_binding_line
+
+  # Nothing-to-disable is answered from shell.json itself, so a machine whose
+  # shell is not running can still finish here — and remove can then delete
+  # the files, which is only safe because the layout no longer points at them.
+  # A layout that still carries the plugin needs the shell and stops without
+  # it, exactly because deleting files it points at would break the bar.
+  if [ -z "$(layout_section_of "$PLUGIN_ID")" ]; then
+    log "not in the bar layout (already on the stock widget) — skipped"
+    return 0
+  fi
+
+  require_shell
 
   if ! plugin_known; then
     log "$PLUGIN_ID is not registered (already on the stock widget) — skipped"
