@@ -322,12 +322,16 @@ fcitx_profile_clean() {
 # ------------------------------------------------------------------------------
 # fcitx5 TriggerKeys 가 이미 정리됐는지 (Control+space 없고 Hangul 있음) → 0=정리됨
 #   config 파일이 없으면 "정리 필요"(1) 로 간주.
+#   검사도 패치도 [Hotkey/TriggerKeys] 섹션만 본다. 파일 전체를 검사하면 다른
+#   섹션의 Control+space 에 걸려 영원히 "정리 필요" 가 되고, 매 실행이 백업을
+#   만들며 fcitx5 를 재시작한다 — 고치지도 않을 것에 걸려서.
 # ------------------------------------------------------------------------------
 fcitx_triggerkeys_clean() {
   [ -f "$FCITX_CONF" ] || return 1
-  ! grep -qiE '^[0-9]+[[:space:]]*=[[:space:]]*Control\+space' "$FCITX_CONF" \
-    && awk '/^\[Hotkey\/TriggerKeys\]/{f=1;next} /^\[/{f=0} f' "$FCITX_CONF" \
-       | grep -qi '=[[:space:]]*Hangul[[:space:]]*$'
+  local tk
+  tk="$(awk '/^\[Hotkey\/TriggerKeys\]/{f=1;next} /^\[/{f=0} f' "$FCITX_CONF")"
+  ! printf '%s\n' "$tk" | grep -qiE '^[0-9]+[[:space:]]*=[[:space:]]*Control\+space' \
+    && printf '%s\n' "$tk" | grep -qi '=[[:space:]]*Hangul[[:space:]]*$'
 }
 
 # ------------------------------------------------------------------------------
@@ -457,6 +461,9 @@ run_remove() {
     sed -i "/^$MARK_BEGIN$/,/^$MARK_END$/d" "$HYPR_MAIN_LUA"
     sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' "$HYPR_MAIN_LUA"
     log "hyprland.lua 에서 require 블록 제거"
+    # 지운 것도 변경이다 — 이걸 안 세우면 아래 reload_hyprland 가 건너뛰어,
+    # 우측 Alt·재바인딩이 재로그인 전까지 세션에 그대로 남는다.
+    HYPR_CHANGED=1
   else
     log "hyprland.lua: require 블록 없음 — 건너뜀"
   fi
@@ -516,10 +523,14 @@ run_full() {
   # 1) 패키지 설치
   # ----------------------------------------------------------------------------
   log "1) 패키지 확인/설치: ${PKGS[*]}"
+  # 실패해도 죽지 않는다 (set -e) — 설정 단계는 패키지 없이도 의미가 있고,
+  # 패키지만 따로 깔고 다시 돌리면 나머지는 건너뜀으로 지나간다.
   if command -v omarchy >/dev/null 2>&1; then
-    omarchy pkg add "${PKGS[@]}"        # 이미 있으면 무시, 없으면 설치
+    omarchy pkg add "${PKGS[@]}" \
+      || warn "패키지 설치 실패 — 설정 단계는 계속 진행 (따로 깔고 다시 실행)"
   elif command -v pacman >/dev/null 2>&1; then
-    sudo pacman -S --needed --noconfirm "${PKGS[@]}"
+    sudo pacman -S --needed --noconfirm "${PKGS[@]}" \
+      || warn "패키지 설치 실패 — 설정 단계는 계속 진행 (따로 깔고 다시 실행)"
   else
     warn "omarchy/pacman 를 못 찾음 — 패키지 설치를 건너뜀 (수동 설치 필요)"
   fi
