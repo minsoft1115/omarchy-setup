@@ -39,7 +39,9 @@
 #
 # Hyprland 설정은 Lua(.lua) 형식만 다룬다. Lua 설정은 Hyprland 0.55 부터라서
 # 그 미만이면 hypr 관련 단계(6, 8)만 메시지와 함께 건너뛴다 (fcitx5 쪽은 그대로 진행).
-# fcitx5 자동시작 자체는 omarchy 기본 autostart 가 담당하므로 여기서 만들지 않음.
+# fcitx5 자동시작은 Omarchy 4.0+ 의 systemd user 유닛(omarchy-fcitx5.service)이
+# 담당하므로 여기서 만들지 않으며, 시작/종료도 그 유닛을 통해서만 한다 —
+# 유닛 밖에서 띄운 인스턴스가 D-Bus 이름을 쥐면 유닛이 무한 재시작 루프에 빠진다.
 # ==============================================================================
 set -euo pipefail
 
@@ -101,6 +103,11 @@ LATIN_WRAPPER="${LATIN_WRAPPER:-omarchy-latin-launch}"   # ~/.local/bin (PATH �
 FCITX_WAS_RUNNING=0
 
 PKGS=(fcitx5 fcitx5-hangul fcitx5-configtool fcitx5-gtk fcitx5-qt)
+# Omarchy 4.0+ 가 fcitx5 를 소유하는 systemd user 유닛. 있으면 시작/종료는
+# 반드시 이 유닛을 통한다 (stop_fcitx5 / start_fcitx5 참고).
+FCITX_UNIT="${FCITX_UNIT:-omarchy-fcitx5.service}"
+# Omarchy 4.0+ 가 기본 제공하는 IM 환경변수 (2단계가 중복 작성을 피하는 기준)
+OMARCHY_IM_ENV="${OMARCHY_IM_ENV:-/usr/share/omarchy/default/environment.d/10-omarchy-fcitx.conf}"
 ENV_FILE="$HOME/.config/environment.d/fcitx.conf"
 XDG_AUTOSTART="$HOME/.config/autostart/org.fcitx.Fcitx5.desktop"
 WRAPPER="$HOME/.local/bin/$LATIN_WRAPPER"
@@ -434,11 +441,26 @@ reload_hyprland() {
 
 # ------------------------------------------------------------------------------
 # fcitx5 안전 종료 (설정 편집 전). 원래 실행 여부를 FCITX_WAS_RUNNING 에 기록.
+#
+# Omarchy 4.0+ 는 fcitx5 를 systemd user 유닛(omarchy-fcitx5.service,
+# Restart=always)으로 관리한다. pkill 만 하면 2초 뒤 유닛이 되살려서 편집 창이
+# 보장되지 않으므로 유닛을 먼저 내리고, 유닛 밖 잔류 인스턴스를 그다음에 정리
+# 한다 — omarchy-restart-xcompose 와 같은 순서다.
 # ------------------------------------------------------------------------------
+have_fcitx_unit() {
+  systemctl --user cat "$FCITX_UNIT" >/dev/null 2>&1
+}
+
 stop_fcitx5() {
-  pgrep -x fcitx5 >/dev/null 2>&1 || return 0
-  FCITX_WAS_RUNNING=1
-  ( fcitx5-remote -e >/dev/null 2>&1 || pkill -x fcitx5 || true )
+  if have_fcitx_unit && systemctl --user is-active --quiet "$FCITX_UNIT"; then
+    FCITX_WAS_RUNNING=1
+    systemctl --user stop "$FCITX_UNIT" >/dev/null 2>&1 || true
+  fi
+  if pgrep -x fcitx5 >/dev/null 2>&1; then
+    FCITX_WAS_RUNNING=1
+    ( fcitx5-remote -e >/dev/null 2>&1 || pkill -x fcitx5 || true )
+  fi
+  [ "${FCITX_WAS_RUNNING:-0}" -eq 1 ] || return 0
   local i
   for i in 1 2 3 4 5 6 7 8; do pgrep -x fcitx5 >/dev/null 2>&1 || break; sleep 0.25; done
   log "fcitx5 임시 종료 (설정 안전 반영용)"
@@ -446,10 +468,22 @@ stop_fcitx5() {
 
 # ------------------------------------------------------------------------------
 # fcitx5 시작 (원래 실행 중이었거나 Hyprland 세션이면)
+#
+# 유닛이 있으면 반드시 유닛으로 띄운다. 유닛 밖에서 띄우면 그 인스턴스가
+# D-Bus 이름(org.fcitx.Fcitx5)을 쥐고, 유닛 인스턴스는 이름을 못 얻어 죽고
+# Restart=always 가 2초마다 되살리는 무한 루프가 된다 (이 머신에서 나흘간
+# 48,000회 재시작으로 실측된 사고다).
 # ------------------------------------------------------------------------------
 start_fcitx5() {
   command -v fcitx5 >/dev/null 2>&1 || return 0
   if [ "${FCITX_WAS_RUNNING:-0}" -eq 1 ] || pgrep -x Hyprland >/dev/null 2>&1; then
+    if have_fcitx_unit; then
+      systemctl --user start "$FCITX_UNIT" >/dev/null 2>&1 \
+        && log "fcitx5 시작 ($FCITX_UNIT)" \
+        || warn "$FCITX_UNIT 시작 실패 — systemctl --user status $FCITX_UNIT 확인"
+      return 0
+    fi
+    # 구버전 Omarchy (유닛 없음): 예전 방식으로 직접 띄운다.
     # 서브셸 자체의 stdout/stderr 도 닫는다. 안쪽 명령만 /dev/null 로 보내면
     # 서브셸과 그 자식이 부모의 파이프를 계속 물고 있어서, 출력을 파이프로 받는
     # 실행(| tee, | grep)이 끝나지 않고 멈춘 것처럼 보인다.
@@ -562,21 +596,29 @@ run_full() {
 
   # ----------------------------------------------------------------------------
   # 2) IM 환경변수  (Wayland 권장: GTK_IM_MODULE 은 일부러 설정하지 않음)
+  #    Omarchy 4.0+ 는 같은 변수 4개를 기본 제공한다 — 그때는 쓰지 않는다.
+  #    우리 파일이 남아 있으면 값이 갈릴 때 사용자 쪽이 이겨 어긋나므로 알린다.
   # ----------------------------------------------------------------------------
-  mkdir -p "$(dirname "$ENV_FILE")"
-  local ENV_CONTENT
-  read -r -d '' ENV_CONTENT <<'EOF' || true
+  if [ -f "$OMARCHY_IM_ENV" ]; then
+    log "2) 환경변수: Omarchy 가 기본 제공 ($OMARCHY_IM_ENV) — 건너뜀"
+    [ -f "$ENV_FILE" ] \
+      && warn "  기존 $ENV_FILE 은 이제 중복이다 — '$0 remove' 가 지워 준다"
+  else
+    mkdir -p "$(dirname "$ENV_FILE")"
+    local ENV_CONTENT
+    read -r -d '' ENV_CONTENT <<'EOF' || true
 INPUT_METHOD=fcitx
 QT_IM_MODULE=fcitx
 XMODIFIERS=@im=fcitx
 SDL_IM_MODULE=fcitx
 EOF
-  if [ -f "$ENV_FILE" ] && diff -q <(printf '%s\n' "$ENV_CONTENT") "$ENV_FILE" >/dev/null 2>&1; then
-    log "2) 환경변수: 이미 동일 — 건너뜀"
-  else
-    backup "$ENV_FILE"
-    printf '%s\n' "$ENV_CONTENT" > "$ENV_FILE"
-    log "2) 환경변수 작성: $ENV_FILE (반영은 재로그인 후)"
+    if [ -f "$ENV_FILE" ] && diff -q <(printf '%s\n' "$ENV_CONTENT") "$ENV_FILE" >/dev/null 2>&1; then
+      log "2) 환경변수: 이미 동일 — 건너뜀"
+    else
+      backup "$ENV_FILE"
+      printf '%s\n' "$ENV_CONTENT" > "$ENV_FILE"
+      log "2) 환경변수 작성: $ENV_FILE (반영은 재로그인 후)"
+    fi
   fi
 
   # ----------------------------------------------------------------------------
