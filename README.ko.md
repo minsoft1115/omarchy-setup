@@ -15,6 +15,7 @@ minsoft1115.workspaces/    Quickshell 플러그인 소스 (바 위젯 + 셸 서�
 hypr/                      Hyprland Lua 조각 (설치 시 ~/.config/minsoft1115/hypr/ 로)
 bash/                      alias·function 소스 (설치 시 ~/.config/minsoft1115/bash/ 로)
 lazygit/                   lazygit 설정 (설치 시 ~/.config/lazygit/ 로)
+ccstatusline/              Claude Code status line 설정 (설치 시 ~/.config/ccstatusline/ 로)
 docs/                      스크립트 문서와 조사 기록
 ```
 
@@ -37,6 +38,7 @@ What should be set up? (space toggles, enter confirms)
 > [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
   [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
   [✓] [not installed]        Lazygit — delta renders the diffs
+  [✓] [not installed]        Claude status line — context · session/weekly gauges · reset countdowns
   [✓] [not installed]        sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source
   [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
@@ -65,7 +67,7 @@ clone 은 `~/.local/share/minsoft1115/omarchy-setup` 에 남는다. 스크립트
 
 # 무엇이 설치되나
 
-다섯 가지다. 각각 독립된 스크립트라 하나만 돌려도 되고, 무엇을 건드리는지·어떻게 도는지·
+여섯 가지다. 각각 독립된 스크립트라 하나만 돌려도 되고, 무엇을 건드리는지·어떻게 도는지·
 어디를 고칠 수 있는지는 옆의 문서에 있다.
 
 | | | |
@@ -73,6 +75,7 @@ clone 은 `~/.local/share/minsoft1115/omarchy-setup` 에 남는다. 스크립트
 | **한글 입력** | 오른쪽 Alt 로 한/영 · tmux 와 겹치던 `Control+space` 해제 · Super+Space 메뉴가 영문으로 열림 | `setup-korean.sh` · [문서](docs/setup-korean.md) |
 | **Bash 설정** | Alt-R 히스토리 피커 · fzf 검색과 종료 · delta diff · `pacman`·`yay` 를 실행하기 전에 묻는 선택 가드 | `install-bash-config.sh` · [문서](docs/bash-config.md) |
 | **Lazygit** | lazygit 안의 diff 를 delta 로 렌더 · lazygit 이 없으면 함께 설치 | `install-lazygit.sh` · [문서](docs/lazygit.md) |
+| **Claude status line** | Claude Code 입력창 아래에 [ccstatusline](https://github.com/sirmalloc/ccstatusline) 두 줄 — 모델 · git 브랜치 · context 게이지, 그리고 세션/주간 사용량 게이지와 리셋 카운트다운 · npm 패키지 설치와 `~/.claude/settings.json` 등록까지 한다 | `install-ccstatusline.sh` · [문서](docs/ccstatusline.md) |
 | **sudo-pop** | 권한 요청 비밀번호를 터미널이 아니라 팝업에서 받는다 — polkit 인증 에이전트와, 그 앞에서 순수 명령을 run0 로 보내는 sudo 라우터. [자기 저장소](https://github.com/minsoft1115/sudo-pop)가 따로 있고, 이 스텝이 clone 해서 빌드한다 | `install-sudo-pop.sh` · [문서](docs/sudo-pop.md) |
 | **워크스페이스 바** | Super 를 누르고 있으면 어디에 뭐가 떠 있는지 보인다 · 포커스된 워크스페이스는 숫자 그대로 | `install-workspaces-widget.sh` · [문서](docs/workspaces-widget.md) |
 
