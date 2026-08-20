@@ -7,6 +7,11 @@
         "type": "model"
       },
       {
+        "id": "38bd416a-b2a3-4502-9165-5b14bd703d45",
+        "type": "git-root-dir",
+        "color": "brightYellow"
+      },
+      {
         "id": "38bd416a-b2a3-4502-9165-5b14bd703d46",
         "type": "git-branch"
       },
