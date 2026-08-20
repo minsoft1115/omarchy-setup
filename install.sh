@@ -67,7 +67,7 @@ have_tty() {
 # reverse order removal uses -- and that is the order that matters. Its --uninit
 # has to run while the snippet loader bash-config owns is still in ~/.bashrc.
 # ==============================================================================
-STEP_NAMES=(korean bash-config lazygit sudo-pop workspaces)
+STEP_NAMES=(korean bash-config lazygit ccstatusline sudo-pop workspaces)
 
 # No commas in these: gum takes the preselected set as one comma-separated
 # string matched against the option text, so a comma inside a label splits it
@@ -77,6 +77,7 @@ step_label() {
     korean)      echo "Korean input — right Alt for 한/영 · Omarchy menu opens in Latin" ;;
     bash-config) echo "Bash config — Alt-R history picker · fzf search and kill · delta diffs" ;;
     lazygit)     echo "Lazygit — delta renders the diffs" ;;
+    ccstatusline) echo "Claude status line — context · session/weekly gauges · reset countdowns" ;;
     sudo-pop)    echo "sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source" ;;
     workspaces)  echo "Workspaces bar — hold Super to see which apps are where before switching" ;;
   esac
@@ -146,6 +147,15 @@ step_state() {
       cmp -s "$REPO_DIR/lazygit/config.yml" "$LAZYGIT_DST" \
         || { echo "installed / outdated"; return; }
       ;;
+    ccstatusline)
+      # The binary can live on PATH or behind the mise shim; either counts.
+      { command -v ccstatusline >/dev/null 2>&1 || [ -x "$HOME/.local/share/mise/shims/ccstatusline" ]; } \
+        && [ -f "$HOME/.config/ccstatusline/settings.json" ] \
+        && grep -qF ccstatusline "$HOME/.claude/settings.json" 2>/dev/null \
+        || { echo "not installed"; return; }
+      cmp -s "$REPO_DIR/ccstatusline/settings.json" "$HOME/.config/ccstatusline/settings.json" \
+        || { echo "installed / outdated"; return; }
+      ;;
     sudo-pop)
       [ -x "$SUDO_POP_BIN" ] && [ -f "$SUDO_POP_SNIPPET" ] \
         || { echo "not installed"; return; }
@@ -178,6 +188,7 @@ step_cmd() {
     korean)      echo "scripts/setup-korean.sh" ;;
     bash-config) echo "scripts/install-bash-config.sh install${GUARDS_FLAG:+ $GUARDS_FLAG}" ;;
     lazygit)     echo "scripts/install-lazygit.sh install" ;;
+    ccstatusline) echo "scripts/install-ccstatusline.sh install" ;;
     sudo-pop)    echo "scripts/install-sudo-pop.sh install" ;;
     workspaces)  echo "scripts/install-workspaces-widget.sh install" ;;
   esac
@@ -193,6 +204,7 @@ step_remove_cmd() {
     korean)      echo "scripts/setup-korean.sh remove" ;;
     bash-config) echo "scripts/install-bash-config.sh remove" ;;
     lazygit)     echo "scripts/install-lazygit.sh remove" ;;
+    ccstatusline) echo "scripts/install-ccstatusline.sh remove" ;;
     sudo-pop)    echo "scripts/install-sudo-pop.sh remove" ;;
     workspaces)  echo "scripts/install-workspaces-widget.sh remove" ;;
   esac
