@@ -41,6 +41,7 @@ curl | bash
 What should be set up? (space toggles, enter confirms)
 > [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
   [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+  [✓] [not installed]        Lazygit — delta renders the diffs
   [✓] [not installed]        sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source
   [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
@@ -65,6 +66,7 @@ What should be set up? (space toggles, enter confirms)
   |---|---|---|
   | `korean` | 조각 파일 + `hyprland.lua` 의 마커 | `hypr/korean-input.lua` |
   | `bash-config` | `~/.bashrc` 의 마커 | `bash/*.sh` 전부 (설치본에 없는 파일도 차이로 본다) |
+  | `lazygit` | `~/.config/lazygit/config.yml` 이 비어 있지 않음 — Omarchy 가 빈 파일로 깔아 두므로 | `lazygit/config.yml` |
   | `sudo-pop` | 바이너리 + `sudo-pop.sh` | **빌드한 커밋** vs upstream `main` (아래) |
   | `workspaces` | 플러그인 `manifest.json` | 플러그인 폴더 전체 + `hypr/workspace-peek.lua` |
   | `zz-pkg-guards` | 설치본에 파일 존재 | `bash/zz-pkg-guards.sh` |
@@ -91,7 +93,7 @@ What should be set up? (space toggles, enter confirms)
   상태를 `installed, latest` 가 아니라 `installed / latest` 로 쓰는 이유다
 - 상태 칸은 **고정 폭으로 정렬**한다. 가운뎃점(`·`) 같은 멀티바이트 문자를 쓰면 `printf` 가
   바이트로 세어 한 칸씩 어긋나므로, 구분자는 ASCII 로 둔다
-- 고른 순서와 무관하게 **실행 순서는 고정**이다: 한글 → bash → sudo-pop → 위젯.
+- 고른 순서와 무관하게 **실행 순서는 고정**이다: 한글 → bash → lazygit → sudo-pop → 위젯.
   위젯이 `omarchy restart shell` 로 바를 재시작하므로 마지막이다.
   sudo-pop 이 bash 뒤인 것은 **제거가 역순**이기 때문이다 — `sudo-pop --uninit` 은 bash 단계가
   깐 로더가 `~/.bashrc` 에 아직 있을 때 돌아야 한다
@@ -100,7 +102,7 @@ What should be set up? (space toggles, enter confirms)
   곳에서 동의를 넘겨짚지 않는다. 그런 환경에서는 `--all` 이나 `--only` 로 명시해야 한다
 
 ```
-[x] no terminal to ask at — say what you want with --all or --only korean,bash-config,sudo-pop,workspaces
+[x] no terminal to ask at — say what you want with --all or --only korean,bash-config,lazygit,sudo-pop,workspaces
 ```
 
 ### 선택 파일은 그 단계가 스스로 묻는다
@@ -148,10 +150,11 @@ $ ./install.sh --list
 name         state          what it does
 korean       [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
 bash-config  [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+lazygit      [installed / latest]   Lazygit — delta renders the diffs
 sudo-pop     [installed / latest]   sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source
 workspaces   [installed / latest]   Workspaces bar — hold Super to see which apps are where before switching
 
-use with: install.sh --only korean,bash-config,sudo-pop,workspaces
+use with: install.sh --only korean,bash-config,lazygit,sudo-pop,workspaces
 ```
 
 ---
@@ -164,7 +167,7 @@ use with: install.sh --only korean,bash-config,sudo-pop,workspaces
 
 - 같은 체크리스트가 **전부 해제된 상태**로 뜬다. 설치는 잘못 골라도 다시 돌리면 되지만
   제거는 아니다
-- **설치의 역순**으로 진행한다 (위젯 → sudo-pop → bash → 한글). sudo-pop 의 `--uninit` 이
+- **설치의 역순**으로 진행한다 (위젯 → sudo-pop → lazygit → bash → 한글). sudo-pop 의 `--uninit` 이
   bash 로더보다 먼저 도는 것이 이 순서의 요점이다
 - 끝나면 `~/.config/minsoft1115/` 가 비었을 때 정리한다
 - 물어볼 터미널이 없으면 **거부한다** (설치와 같다)
