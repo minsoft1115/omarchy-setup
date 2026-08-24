@@ -73,7 +73,7 @@ clone 은 `~/.local/share/minsoft1115/omarchy-setup` 에 남는다. 스크립트
 | | | |
 |---|---|---|
 | **한글 입력** | 오른쪽 Alt 로 한/영 · tmux 와 겹치던 `Control+space` 해제 · Super+Space 메뉴가 영문으로 열림 | `setup-korean.sh` · [문서](docs/setup-korean.md) |
-| **Bash 설정** | Alt-R 히스토리 피커 · fzf 검색과 종료 · delta diff · `pacman`·`yay` 를 실행하기 전에 묻는 선택 가드 | `install-bash-config.sh` · [문서](docs/bash-config.md) |
+| **Bash 설정** | Alt-R 히스토리 피커 · fzf 검색과 종료 · delta diff · markdown 은 glow 로 · `pacman`·`yay` 를 실행하기 전에 묻는 선택 가드 | `install-bash-config.sh` · [문서](docs/bash-config.md) |
 | **Lazygit** | lazygit 안의 diff 를 delta 로 렌더 · lazygit 이 없으면 함께 설치 | `install-lazygit.sh` · [문서](docs/lazygit.md) |
 | **Claude status line** | Claude Code 입력창 아래에 [ccstatusline](https://github.com/sirmalloc/ccstatusline) 두 줄 — 모델 · git 브랜치 · context 게이지, 그리고 세션/주간 사용량 게이지와 리셋 카운트다운 · npm 패키지 설치와 `~/.claude/settings.json` 등록까지 한다 | `install-ccstatusline.sh` · [문서](docs/ccstatusline.md) |
 | **sudo-pop** | 권한 요청 비밀번호를 터미널이 아니라 팝업에서 받는다 — polkit 인증 에이전트와, 그 앞에서 순수 명령을 run0 로 보내는 sudo 라우터. [자기 저장소](https://github.com/minsoft1115/sudo-pop)가 따로 있고, 이 스텝이 clone 해서 빌드한다 | `install-sudo-pop.sh` · [문서](docs/sudo-pop.md) |

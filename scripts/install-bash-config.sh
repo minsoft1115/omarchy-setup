@@ -32,6 +32,8 @@
 #     ripgrep     the `rg` search used by fsearch
 #     fzf         the picker behind fkill and fsearch
 #     gum         the menu the package guards ask with
+#     glow        the markdown renderer used by mcat
+#     ast-grep    what the `sg` alias runs
 #
 #   Package name and command are not always the same word -- git-delta installs
 #   `delta`, ripgrep installs `rg` -- which is why presence is asked about by
@@ -132,7 +134,7 @@ MSB_END="# minsoft1115-bash:end"
 # Arch package names, space separated. The binary a package provides is not
 # always its name -- git-delta installs `delta` -- so presence is asked about by
 # package, never by command.
-MSB_PACKAGES="${MSB_PACKAGES:-git-delta bat ripgrep fzf gum}"
+MSB_PACKAGES="${MSB_PACKAGES:-git-delta bat ripgrep fzf gum glow ast-grep}"
 MSB_SKIP_PACKAGES=0
 
 # Files install asks about instead of just installing. Space separated names,
