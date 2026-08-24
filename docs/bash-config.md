@@ -11,11 +11,12 @@
 
 | 파일 | 내용 |
 |---|---|
-| `bash/aliases.sh` | `cat` → `bat -p` (하이라이팅), `grep` → `rg` |
+| `bash/aliases.sh` | `cat` → `bat -p` (하이라이팅), `grep` → `rg`, `sg` → `ast-grep` |
 | `bash/fhistory.sh` | `fhistory` — **Alt-R** 로 히스토리를 fzf 로 골라 **실행하지 않고 프롬프트에 채워 넣는다**. 목록은 `history` 순서 그대로 두고 커서만 최적 매치로 이동한다 (`--raw` + `best`). Ctrl-Y 로 명령 복사. Ctrl-R 은 fzf 기본 위젯에 그대로 둔다 |
 | `bash/fkill.sh` | `fkill` — 내 프로세스를 fzf 로 골라 종료. `fkill -9` 처럼 시그널 전달 가능 |
 | `bash/fsearch.sh` | `fsearch` — 파일 내용 검색(rg)을 fzf 로 훑어보기. `fsearch TODO` / `fsearch md TODO`, Enter 로 `$EDITOR`, Ctrl-Y 로 경로 복사 |
 | `bash/gdiff.sh` | `gdiff` — `git diff` 를 `delta` 로 넘긴다. 인자는 그대로 전달 |
+| `bash/mcat.sh` | `mcat` — markdown 은 `glow`, 나머지는 `bat` 으로 본다. 인자 없이 파이프로 받으면 그 스트림을 markdown 으로 렌더 |
 | `bash/zz-pkg-guards.sh` | **선택** — `pacman`·`yay` 를 실행하기 전에 대신 쓸 omarchy 명령을 제시하고 **정말 실행할지 물어본다**. 조회 명령은 묻지 않는다 |
 
 ---
@@ -24,7 +25,8 @@
 
 - `bash`
 - 의존 도구는 `install` 이 **`omarchy pkg` 로 먼저 깐다** — `git-delta`(명령은 `delta`),
-  `bat`, `ripgrep`(명령은 `rg`), `fzf`, `gum`(패키지 가드가 묻는 메뉴). 이미 있으면 건너뛴다
+  `bat`, `ripgrep`(명령은 `rg`), `fzf`, `gum`(패키지 가드가 묻는 메뉴), `glow`(mcat 의 markdown
+  렌더러), `ast-grep`(`sg` alias 가 부르는 것). 이미 있으면 건너뛴다
 - `omarchy` 가 없으면 경고만 하고 셸 파일 설치는 계속한다. **`pacman` 을 직접 부르지 않는다**
 - 선택 파일 질문에는 `gum` 을 쓴다. 없으면 `[y/N]` 로 묻는다
 
@@ -56,7 +58,7 @@ source (edit here) : /path/to/repo/bash (present)
 installed copy     : ~/.config/minsoft1115/bash (present)
 in sync with source: yes
 loaded by .bashrc  : yes
-dependencies       : git-delta(ok) bat(ok) ripgrep(ok) fzf(ok) gum(ok)
+dependencies       : git-delta(ok) bat(ok) ripgrep(ok) fzf(ok) gum(ok) glow(ok) ast-grep(ok)
 optional files     : zz-pkg-guards.sh(installed)
 ```
 
@@ -107,6 +109,22 @@ fzf --tac --raw --no-sort --bind 'result:best'
 커서를 옮긴다. **둘은 같이 써야 의미가 있다** — `--raw` 없이는 fzf 가 비매치 줄을 걸러 내므로
 `best` 가 `first` 와 같아진다 (man 에도 그렇게 적혀 있다). 실측으로도 `--raw` 없이는 첫 줄로,
 있으면 실제 매치 줄로 커서가 갔다.
+
+### glow 는 파일 인자보다 stdin 을 먼저 본다
+
+`mcat` 이 markdown 파일을 `glow -p - < "$f"` 로, 즉 **인자가 아니라 stdin 으로** 넘기는 이유다.
+glow 는 파이프로 들어온 입력이 있으면 이름 붙은 파일을 무시한다 — 실측:
+
+```
+$ echo IGNORED | glow -p -- a.md
+IGNORED
+```
+
+`-- ` 를 붙여도, 붙이지 않아도 같았다. 그대로 두면 `... | mcat x.md` 가 x.md 를 영영 열지
+않는다. 파일을 stdin 으로 먹이면 어느 쪽이 이기는지 물을 일이 없어진다.
+
+비파일 인자는 받지 않는다 — 렌더러가 둘이라 `-s`·`-p` 같은 플래그가 어느 쪽 것인지 모호해진다.
+플래그가 필요하면 `glow`·`bat` 을 직접 부르면 된다.
 
 ### 로드 순서가 규칙을 하나 만든다
 

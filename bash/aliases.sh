@@ -11,3 +11,4 @@
 
 alias cat='bat -p'
 alias grep='rg'
+alias sg='ast-grep'

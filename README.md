@@ -76,7 +76,7 @@ how it works and what can be tuned is in the linked document.
 | | | |
 |---|---|---|
 | **Korean input** | right Alt toggles 한/영 · `Control+space` freed for tmux's prefix · the Super+Space menu opens in Latin | `setup-korean.sh` · [docs](docs/setup-korean.md) |
-| **Bash config** | Alt-R history picker · fzf search and kill · delta diffs · optional guards that ask before `pacman` or `yay` runs | `install-bash-config.sh` · [docs](docs/bash-config.md) |
+| **Bash config** | Alt-R history picker · fzf search and kill · delta diffs · markdown through glow · optional guards that ask before `pacman` or `yay` runs | `install-bash-config.sh` · [docs](docs/bash-config.md) |
 | **Lazygit** | diffs rendered through delta · installs lazygit itself if missing | `install-lazygit.sh` · [docs](docs/lazygit.md) |
 | **Claude status line** | [ccstatusline](https://github.com/sirmalloc/ccstatusline) under the Claude Code prompt, two lines: model · git branch · context gauge, then session/weekly usage gauges with reset countdowns · installs the npm package and registers it in `~/.claude/settings.json` | `install-ccstatusline.sh` · [docs](docs/ccstatusline.md) |
 | **sudo-pop** | the password prompt for privileged actions in a popup instead of the terminal — a polkit authentication agent, with a sudo router in front that sends plain commands through run0. [Its own repository](https://github.com/minsoft1115/sudo-pop) — this step clones and builds it | `install-sudo-pop.sh` · [docs](docs/sudo-pop.md) |
