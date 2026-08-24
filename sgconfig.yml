@@ -1,0 +1,9 @@
+# Paths are resolved against this file, not the working directory, so the
+# repository can sit anywhere -- including the clone install.sh keeps at
+# ~/.local/share/minsoft1115/omarchy-setup.
+ruleDirs:
+- rules
+testConfigs:
+- testDir: rule-tests
+utilDirs:
+- utils
