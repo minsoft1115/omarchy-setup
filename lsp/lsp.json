@@ -1,0 +1,94 @@
+{
+  "clangd": {
+    "command": "clangd",
+    "args": ["--background-index"],
+    "extensionToLanguage": {
+      ".c": "c",
+      ".h": "c",
+      ".cpp": "cpp",
+      ".cc": "cpp",
+      ".cxx": "cpp",
+      ".hpp": "cpp",
+      ".hxx": "cpp",
+      ".C": "cpp",
+      ".H": "cpp"
+    }
+  },
+  "rust-analyzer": {
+    "command": "rust-analyzer",
+    "extensionToLanguage": {
+      ".rs": "rust"
+    }
+  },
+  "basedpyright": {
+    "command": "basedpyright-langserver",
+    "args": ["--stdio"],
+    "extensionToLanguage": {
+      ".py": "python",
+      ".pyi": "python"
+    }
+  },
+  "bash": {
+    "command": "bash-language-server",
+    "args": ["start"],
+    "extensionToLanguage": {
+      ".sh": "shellscript",
+      ".bash": "shellscript"
+    }
+  },
+  "typescript": {
+    "command": "typescript-language-server",
+    "args": ["--stdio"],
+    "extensionToLanguage": {
+      ".ts": "typescript",
+      ".tsx": "typescriptreact",
+      ".mts": "typescript",
+      ".cts": "typescript",
+      ".js": "javascript",
+      ".jsx": "javascriptreact",
+      ".mjs": "javascript",
+      ".cjs": "javascript"
+    },
+    "startupTimeout": 30000
+  },
+  "gopls": {
+    "command": "gopls",
+    "extensionToLanguage": {
+      ".go": "go"
+    }
+  },
+  "lua": {
+    "command": "lua-language-server",
+    "extensionToLanguage": {
+      ".lua": "lua"
+    }
+  },
+  "marksman": {
+    "command": "marksman",
+    "args": ["server"],
+    "extensionToLanguage": {
+      ".md": "markdown",
+      ".markdown": "markdown"
+    }
+  },
+  "csharp": {
+    "command": "roslyn-language-server",
+    "args": [
+      "--stdio",
+      "--logLevel",
+      "Warning",
+      "--autoLoadProjects",
+      "--telemetryLevel",
+      "off",
+      "--extensionLogDirectory",
+      "__HOME__/.local/state/roslyn-language-server"
+    ],
+    "extensionToLanguage": {
+      ".cs": "csharp",
+      ".csx": "csharp",
+      ".razor": "razor",
+      ".cshtml": "razor"
+    },
+    "startupTimeout": 60000
+  }
+}

@@ -13,10 +13,12 @@ are backed up as `*.bak.<timestamp>` before they are touched.
 install.sh                 entry point — clone + pick what to install
 scripts/                   the individual installers
 minsoft1115.workspaces/    Quickshell plugin source (bar widget + shell service)
+minsoft1115.fcitx/         Quickshell plugin source (hangul/Latin bar icon)
 hypr/                      Hyprland Lua snippets (installed to ~/.config/minsoft1115/hypr/)
 bash/                      alias and function sources (installed to ~/.config/minsoft1115/bash/)
 lazygit/                   lazygit config (installed to ~/.config/lazygit/)
 ccstatusline/              Claude Code status line config (installed to ~/.config/ccstatusline/)
+lsp/                       Grok lsp.json (installed to ~/.grok/lsp.json)
 docs/                      per-script documentation and research notes (Korean)
 ```
 
@@ -41,6 +43,7 @@ What should be set up? (space toggles, enter confirms)
   [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
   [✓] [not installed]        Lazygit — delta renders the diffs
   [✓] [not installed]        Claude status line — context · session/weekly gauges · reset countdowns
+  [✓] [not installed]        LSP — language servers · Grok and Claude usable
   [✓] [not installed]        sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source
   [✓] [not installed]        Workspaces bar — hold Super to see which apps are where before switching
 ```
@@ -70,15 +73,16 @@ states, what the checkboxes mean, and how removing differs.
 
 # What gets installed
 
-Six things. Each is its own script and can be run on its own; what it touches,
+Seven things. Each is its own script and can be run on its own; what it touches,
 how it works and what can be tuned is in the linked document.
 
 | | | |
 |---|---|---|
-| **Korean input** | right Alt toggles 한/영 · `Control+space` freed for tmux's prefix · the Super+Space menu opens in Latin | `setup-korean.sh` · [docs](docs/setup-korean.md) |
+| **Korean input** | right Alt toggles 한/영 · `Control+space` freed for tmux's prefix · the Super+Space menu opens in Latin · taegeuk / A on the right of the bar | `setup-korean.sh` · [docs](docs/setup-korean.md) |
 | **Bash config** | Alt-R history picker · fzf search and kill · delta diffs · markdown through glow · optional guards that ask before `pacman` or `yay` runs | `install-bash-config.sh` · [docs](docs/bash-config.md) |
 | **Lazygit** | diffs rendered through delta · installs lazygit itself if missing | `install-lazygit.sh` · [docs](docs/lazygit.md) |
-| **Claude status line** | [ccstatusline](https://github.com/sirmalloc/ccstatusline) under the Claude Code prompt, two lines: model · git branch · context gauge, then session/weekly usage gauges with reset countdowns · installs the npm package and registers it in `~/.claude/settings.json` | `install-ccstatusline.sh` · [docs](docs/ccstatusline.md) |
+| **Claude status line** | [ccstatusline](https://github.com/sirmalloc/ccstatusline) under the Claude Code prompt, two lines: model · repo · git branch · context gauge, then session/weekly usage gauges with reset countdowns · installs the package (mise, or npm if mise is missing) and registers it in `~/.claude/settings.json` | `install-ccstatusline.sh` · [docs](docs/ccstatusline.md) |
+| **LSP** | nine language servers, then Grok and Claude made usable — Omarchy `~/.local/bin` wrappers, Grok `lsp.json` + `lsp_tools`, Claude official LSP plugins | `install-lsp.sh` · [docs](docs/lsp.md) |
 | **sudo-pop** | the password prompt for privileged actions in a popup instead of the terminal — a polkit authentication agent, with a sudo router in front that sends plain commands through run0. [Its own repository](https://github.com/minsoft1115/sudo-pop) — this step clones and builds it | `install-sudo-pop.sh` · [docs](docs/sudo-pop.md) |
 | **Workspaces bar** | hold Super to see which apps are where before switching · the focused workspace keeps its number | `install-workspaces-widget.sh` · [docs](docs/workspaces-widget.md) |
 

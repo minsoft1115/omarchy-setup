@@ -5,7 +5,7 @@ Claude Code 입력창 아래 status line 을
 사용량을 보려고 바의 아이콘을 클릭할 필요 없이, 세션을 쓰는 내내 눈앞에 있다.
 
 ```
-Model: Fable 5 | ⎇ main | Context: ▓▓░░░░░░░░ 41k/200k (20%)
+Model: Fable 5 | omarchy-setup | ⎇ main | Context: ▓▓░░░░░░░░ 41k/200k (20%)
 Session: ▓▓▓▓░░░░░░ 39.0% | Reset: 4hr 27m | Weekly: ▓▓▓▓▓▓▓░░░ 72.0% | Weekly Reset: 2d 11hr
 ```
 
@@ -14,10 +14,10 @@ Session: ▓▓▓▓░░░░░░ 39.0% | Reset: 4hr 27m | Weekly: ▓▓�
 `install` 은 세 가지를 순서대로 한다. 각 단계는 idempotent 라 이미 된 것은
 `skipped` 로 넘어간다.
 
-1. **npm 패키지** — `npm install -g ccstatusline`. Omarchy 는 node 를 mise 로
-   관리하므로 설치 후 `mise reshim` 까지 해서
-   `~/.local/share/mise/shims/ccstatusline` 이 생기게 한다. 등록에는 이 shim
-   경로를 쓴다 — node 버전을 갈아타도 경로가 살아남는 쪽이라서.
+1. **패키지** — mise 가 있으면 `mise use -g npm:ccstatusline@latest` (Omarchy
+   기본), 없거나 실패하면 `npm install -g ccstatusline`. 설치 후
+   `mise reshim` 해서 `~/.local/share/mise/shims/ccstatusline` 이 생기게 한다.
+   등록에는 이 shim 경로를 쓴다 — node 버전을 갈아타도 경로가 살아남는 쪽이라서.
 2. **위젯 설정** — 저장소의 `ccstatusline/settings.json` 을
    `~/.config/ccstatusline/settings.json` 으로 복사.
 3. **등록** — `~/.claude/settings.json` 의 `statusLine` 키에 바이너리를 등록.
@@ -29,7 +29,7 @@ Session: ▓▓▓▓░░░░░░ 39.0% | Reset: 4hr 27m | Weekly: ▓▓�
 
 | 줄 | 위젯 | 표시 |
 |---|---|---|
-| 1 | `model` · `git-branch` · `context-bar` (slider) | 모델, 브랜치, context 게이지 + `사용/전체 (%)` |
+| 1 | `model` · `git-root-dir` (brightYellow) · `git-branch` · `context-bar` (slider) | 모델, 레포 이름(origin 없는 로컬은 루트 폴더명), 브랜치, context 게이지 + `사용/전체 (%)` |
 | 2 | `session-usage` (slider) · `reset-timer` · `weekly-usage` (slider) · `weekly-reset-timer` | 5시간 한도 게이지, 블록 리셋까지 남은 시간, 주간 한도 게이지, 주간 리셋까지 남은 시간 |
 
 그 외 결정들:
@@ -50,6 +50,13 @@ Session: ▓▓▓▓░░░░░░ 39.0% | Reset: 4hr 27m | Weekly: ▓▓�
 
 ## 설치본이 outdated 로 뜰 때
 
+`install.sh` 의 판정은 체크리스트용이고, 이 스크립트의 `status` 와는 별개다.
+
+| | 보는 것 | 아니면 |
+|---|---|---|
+| 설치 여부 | 바이너리(PATH 또는 mise shim), `~/.config/ccstatusline/settings.json`, `~/.claude/settings.json` 의 `statusLine.command` 가 ccstatusline 을 가리키는지 | 설정 파일 어딘가에 문자열만 있는지가 아니다. 셋 중 하나라도 없으면 `not installed` |
+| 최신 여부 | 설정 파일이 소스와 같은지 | 다르면 `installed / outdated` |
+
 ccstatusline 은 설치된 설정 파일을 스스로 다시 쓴다: TUI 를 열면 파일을
 정규화하고, 업데이트 공지가 임시 키를 얹는다. 아무도 고치지 않았는데 소스와
 달라져 상태가 `installed / outdated` 로 읽힌다. `diff` 로 무엇이 달라졌는지
@@ -62,12 +69,14 @@ ccstatusline 은 설치된 설정 파일을 스스로 다시 쓴다: TUI 를 열
   지운다. 다른 명령이 등록돼 있으면 남의 것이므로 두고 경고만 한다.
 - 설정 파일 — 소스와 같으면 백업 후 삭제(설치 전 상태는 "파일 없음").
   다르면 손대지 않는다.
-- npm 패키지 — 이 status line 말고는 쓸 데가 없으므로 함께 지운다.
-  `--keep-package` 를 주면 남긴다.
+- 패키지 — 이 status line 말고는 쓸 데가 없으므로 함께 지운다. mise 로
+  깔린 것은 `mise unuse`, 예전에 `npm install -g` 로 깔린 것은
+  `npm uninstall -g`. 둘 다 있으면 둘 다. `--keep-package` 를 주면 남긴다.
 
 이미 떠 있는 Claude Code 세션은 재시작할 때까지 이전 status line 을 유지한다.
 
 ## 의존성
 
-node/npm 과 jq. 둘 다 있어야 하고, 스크립트가 대신 설치하지는 않는다 —
-Omarchy 기본 구성이면 둘 다 있다 (node 는 `mise use -g node@lts`).
+node 와 jq. 둘 다 있어야 하고, 스크립트가 대신 설치하지는 않는다 —
+Omarchy 기본 구성이면 둘 다 있다 (node 는 mise). npm 은 mise 가 없을 때만
+쓰인다.

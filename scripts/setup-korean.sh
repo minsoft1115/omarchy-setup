@@ -12,7 +12,8 @@
 #
 # remove 가 지우는 것:
 #   hyprland.lua 의 마커 블록, ~/.config/minsoft1115/hypr 의 조각,
-#   영문-우선 래퍼, IM 환경변수 파일, XDG 자동시작 억제 파일.
+#   영문-우선 래퍼, IM 환경변수 파일, XDG 자동시작 억제 파일,
+#   한/영 바 위젯 (바에 있으면 끄고 복사본을 지움).
 #
 # remove 가 건드리지 않는 것:
 #   fcitx5 의 config/profile — 우리가 만든 게 아니라 고친 것이라, 되돌리면
@@ -30,6 +31,7 @@
 #   7. 영문-우선 실행 래퍼
 #   8. Super+Space / Super+Alt+Space 재바인딩 (메뉴를 영문으로 열기)
 #   9. 적용 (Hyprland reload / fcitx5 재시작)
+#  10. 한/영 바 위젯 (오른쪽 섹션 맨 왼쪽). --light 는 바를 건드리지 않는다.
 #
 # 가벼운(--light) 단계: 5, 6, 9 만 수행.
 #   이미 한글 입력이 구성된 시스템에서 아래만 재적용할 때 사용:
@@ -111,6 +113,14 @@ OMARCHY_IM_ENV="${OMARCHY_IM_ENV:-/usr/share/omarchy/default/environment.d/10-om
 ENV_FILE="$HOME/.config/environment.d/fcitx.conf"
 XDG_AUTOSTART="$HOME/.config/autostart/org.fcitx.Fcitx5.desktop"
 WRAPPER="$HOME/.local/bin/$LATIN_WRAPPER"
+
+# Copy, not a symlink: Omarchy's inotify watcher does not follow links.
+PLUGIN_ID="${PLUGIN_ID:-minsoft1115.fcitx}"
+PLUGIN_SRC="${PLUGIN_SRC:-$REPO_DIR/$PLUGIN_ID}"
+PLUGINS_DIR="${PLUGINS_DIR:-$HOME/.config/omarchy/plugins}"
+PLUGIN_DST="$PLUGINS_DIR/$PLUGIN_ID"
+SHELL_JSON="${SHELL_JSON:-$HOME/.config/omarchy/shell.json}"
+SETTLE_SECONDS="${SETTLE_SECONDS:-2}"
 
 log()    { printf '\033[1;32m[+]\033[0m %s\n' "$*"; }
 warn()   { printf '\033[1;33m[!]\033[0m %s\n' "$*"; }
@@ -493,10 +503,142 @@ start_fcitx5() {
   fi
 }
 
-# ==============================================================================
-# 가벼운 모드 — 패키지/sudo 없이 키 설정만 재적용
-# ==============================================================================
-# ------------------------------------------------------------------------------
+plugin_copied() { [ -f "$PLUGIN_DST/manifest.json" ]; }
+
+plugin_in_sync() {
+  plugin_copied || return 1
+  [ -d "$PLUGIN_SRC" ] || return 1
+  diff -r -q "$PLUGIN_SRC" "$PLUGIN_DST" >/dev/null 2>&1
+}
+
+plugin_in_bar() {
+  [ -f "$SHELL_JSON" ] || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+  jq -e --arg id "$PLUGIN_ID" '
+    [.bar.layout // {} | .[][]? | (.id // .)] | index($id) != null
+  ' "$SHELL_JSON" >/dev/null 2>&1
+}
+
+plugin_bar_section() {
+  [ -f "$SHELL_JSON" ] || return 0
+  jq -r --arg id "$PLUGIN_ID" '
+    .bar.layout // {} | to_entries[]
+    | .key as $section
+    | .value[]? | select((.id // .) == $id) | $section
+  ' "$SHELL_JSON" 2>/dev/null | head -1
+}
+
+plugin_bar_index() {
+  [ -f "$SHELL_JSON" ] || return 0
+  jq -r --arg id "$PLUGIN_ID" '
+    .bar.layout.right // [] | to_entries[]
+    | select((.value.id // .value) == $id) | .key
+  ' "$SHELL_JSON" 2>/dev/null | head -1
+}
+
+copy_fcitx_widget() {
+  [ -d "$PLUGIN_SRC" ] || { warn "위젯 소스 없음: $PLUGIN_SRC — 건너뜀"; return 1; }
+  mkdir -p "$PLUGINS_DIR"
+  local stage
+  stage="$(mktemp -d "$PLUGINS_DIR/.install.XXXXXX")"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$stage'" RETURN
+  cp -aL "$PLUGIN_SRC/." "$stage/"
+  rm -rf "$PLUGIN_DST"
+  mv "$stage" "$PLUGIN_DST"
+  trap - RETURN
+  log "한/영 위젯 설치: $PLUGIN_SRC -> $PLUGIN_DST"
+  return 0
+}
+
+wait_for_plugin() {
+  local i
+  command -v omarchy >/dev/null 2>&1 || return 1
+  command -v jq >/dev/null 2>&1 || return 1
+  for i in $(seq 1 40); do
+    omarchy plugin list --json 2>/dev/null \
+      | jq -e --arg id "$PLUGIN_ID" 'any(.[]; .id == $id)' >/dev/null 2>&1 \
+      && return 0
+    sleep 0.05
+  done
+  return 1
+}
+
+place_fcitx_widget() {
+  command -v omarchy >/dev/null 2>&1 || return 1
+  if ! plugin_in_bar; then
+    backup "$SHELL_JSON"
+    omarchy plugin enable "$PLUGIN_ID" --section right >/dev/null \
+      || { warn "omarchy plugin enable $PLUGIN_ID 실패 — 한글 입력은 그대로"; return 1; }
+    log "바에 추가: $PLUGIN_ID (right)"
+  fi
+  local sec idx
+  sec="$(plugin_bar_section)"
+  idx="$(plugin_bar_index)"
+  if [ "$sec" != "right" ] || [ "$idx" != "0" ]; then
+    omarchy bar move "$PLUGIN_ID" --section right --index 0 >/dev/null \
+      || { warn "omarchy bar move $PLUGIN_ID 실패 — 위치는 나중에 옮기면 됨"; return 0; }
+    log "바 위치: right index 0"
+  else
+    log "바 위치: 이미 right index 0 — 건너뜀"
+  fi
+}
+
+settle_and_restart_shell() {
+  log "플러그인 리로드가 끝나기를 기다림 (${SETTLE_SECONDS}s)..."
+  sleep "$SETTLE_SECONDS"
+  command -v omarchy >/dev/null 2>&1 || return 0
+  omarchy restart shell >/dev/null 2>&1 \
+    || warn "omarchy restart shell 실패 — 'omarchy restart shell' 을 직접 실행"
+}
+
+install_fcitx_widget() {
+  if [ ! -d "$PLUGIN_SRC" ]; then
+    warn "위젯 소스 없음: $PLUGIN_SRC — 건너뜀"
+    return 0
+  fi
+  if ! command -v omarchy >/dev/null 2>&1; then
+    warn "omarchy 없음 — 한/영 바 위젯을 건너뜀"
+    return 0
+  fi
+  if [ ! -f "$SHELL_JSON" ]; then
+    warn "$SHELL_JSON 없음 — 한/영 바 위젯을 건너뜀"
+    return 0
+  fi
+
+  local copied=0
+  if plugin_in_sync; then
+    log "한/영 위젯: 설치본이 소스와 같음 — 복사 건너뜀"
+  else
+    copy_fcitx_widget || return 0
+    copied=1
+    wait_for_plugin || warn "셸이 $PLUGIN_ID 를 아직 못 찾음 — enable 을 시도함"
+  fi
+
+  place_fcitx_widget
+
+  if [ "$copied" = 1 ]; then
+    settle_and_restart_shell
+  fi
+}
+
+remove_fcitx_widget() {
+  if plugin_in_bar && command -v omarchy >/dev/null 2>&1; then
+    backup "$SHELL_JSON"
+    omarchy plugin disable "$PLUGIN_ID" >/dev/null \
+      || warn "omarchy plugin disable $PLUGIN_ID 실패 — 바에서 직접 빼면 됨"
+    log "바에서 제거: $PLUGIN_ID"
+  else
+    log "한/영 위젯: 바에 없음 — 건너뜀"
+  fi
+  if plugin_copied; then
+    rm -rf "$PLUGIN_DST"
+    log "삭제: $PLUGIN_DST"
+  else
+    log "한/영 위젯 복사본 없음 — 건너뜀"
+  fi
+}
+
 # 되돌리기. 이 스크립트가 만든 파일만 지운다 — 고쳐 놓은 남의 파일(fcitx5
 # config/profile)은 --fcitx 를 줘야 백업에서 되돌린다.
 # ------------------------------------------------------------------------------
@@ -549,12 +691,17 @@ run_remove() {
     ls -1t "$FCITX_CONF".bak.* 2>/dev/null | head -1 | sed 's/^/      /' || true
   fi
 
+  remove_fcitx_widget
+
   reload_hyprland
 
   echo
   log "완료. 재로그인하면 IM 환경변수까지 빠진다. 패키지는 그대로 두었다."
 }
 
+# ==============================================================================
+# 가벼운 모드 — 패키지/sudo 없이 키 설정만 재적용
+# ==============================================================================
 run_light() {
   warn_legacy_blocks                      # 예전 방식으로 깔린 흔적이 있으면 알림
   apply_ralt_hangul                       # 오른쪽 Alt = 한/영
@@ -722,9 +869,16 @@ EOF
     log "fcitx5 설정 변경 없음 — 재시작 불필요"
   fi
 
+  # ----------------------------------------------------------------------------
+  # 10) 한/영 바 위젯 (오른쪽 섹션 맨 왼쪽)
+  # ----------------------------------------------------------------------------
+  log "10) 한/영 바 위젯"
+  install_fcitx_widget
+
   echo
   log "완료. 완전 반영을 위해 한 번 로그아웃/로그인 권장 (환경변수 적용)."
   log "이후: 오른쪽 Alt = 한/영, Super+Space·Super+Alt+Space 는 영문으로 시작."
+  log "바 오른쪽 맨 왼쪽이 태극(한글) / A(영문). 클릭도 같은 토글."
 }
 
 # ==============================================================================

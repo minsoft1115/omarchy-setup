@@ -15,6 +15,7 @@
 | `Control+space` 가 tmux prefix 와 충돌 | fcitx5 트리거에서 `Control+space` 제거, `Hangul` 만 유지 |
 | Super+Space 메뉴가 한글 상태로 열려 검색이 안 됨 | 메뉴 실행 전 영문으로 강제 전환하는 래퍼로 재바인딩 |
 | fcitx5 가 두 번 뜸 | XDG 자동시작을 `Hidden=true` 로 억제 (omarchy 기본 autostart 가 담당) |
+| 바에 한/영이 안 보임 | Quickshell 위젯: 한글은 태극 SVG, 영문은 A. 오른쪽 섹션 맨 왼쪽 |
 
 ---
 
@@ -83,6 +84,7 @@ setup-korean.sh — Omarchy 한글 입력(fcitx5 + hangul) 세팅
 7. 영문-우선 실행 래퍼 → `~/.local/bin/omarchy-latin-launch`
 8. `Super+Space` / `Super+Alt+Space` 재바인딩 (메뉴를 영문으로 열기)
 9. 적용 (Hyprland reload / fcitx5 재시작)
+10. 한/영 바 위젯 — `minsoft1115.fcitx` 를 복사하고 오른쪽 섹션 index 0 에 둠 (`--light` 는 건너뜀)
 
 ### 가벼운(`--light`) 단계
 
@@ -154,7 +156,7 @@ $ ./scripts/setup-korean.sh --light
 ## 실행 후
 
 1. **로그아웃 / 로그인 한 번** — `environment.d` 의 IM 환경변수는 세션 시작 시에만 읽힌다.
-2. 오른쪽 Alt 로 한/영 전환.
+2. 오른쪽 Alt 로 한/영 전환. 바 오른쪽 맨 왼쪽 아이콘이 같이 바뀐다 (태극 = 한글, A = 영문). 아이콘을 눌러도 같은 토글이다.
 3. `Super+Space`, `Super+Alt+Space` 는 항상 영문 상태로 열린다.
 
 이미 열려 있던 창은 IM 환경변수를 물려받지 못했을 수 있으니 재실행이 필요할 수 있다.
@@ -173,6 +175,8 @@ $ ./scripts/setup-korean.sh --light
 | `~/.config/minsoft1115/hypr/korean-input.lua` | `kb_options` 에 `korean:ralt_hangul` (저장소에서 복사) |
 | `~/.config/minsoft1115/hypr/korean-bindings.lua` | SPACE 계열 바인딩 재설정 (템플릿에서 생성) |
 | `~/.local/bin/omarchy-latin-launch` | 영문-우선 실행 래퍼 (신규 생성) |
+| `~/.config/omarchy/plugins/minsoft1115.fcitx/` | 한/영 바 위젯 복사본 (Omarchy 셸) |
+| `~/.config/omarchy/shell.json` | 위젯을 오른쪽 섹션 맨 앞에 넣는 레이아웃 (`omarchy plugin enable` / `omarchy bar move`) |
 
 기존 파일은 수정 전에 `*.bak.<타임스탬프>` 로 백업된다. 되돌리려면 백업을 덮어쓰면 된다.
 
@@ -287,7 +291,7 @@ command -v omarchy-latin-launch    # ~/.local/bin/omarchy-latin-launch 가 나�
 ```
 
 이 스크립트가 **만든 것만** 지운다 — `hyprland.lua` 의 마커 블록, `~/.config/minsoft1115/hypr`
-의 조각, 영문-우선 래퍼, IM 환경변수 파일, XDG 자동시작 억제 파일.
+의 조각, 영문-우선 래퍼, IM 환경변수 파일, XDG 자동시작 억제 파일, 한/영 바 위젯.
 
 **fcitx5 의 `config`·`profile` 은 건드리지 않는다.** 우리가 만든 게 아니라 고친 파일이고,
 되돌리면 한글 입력 자체가 사라질 수 있어서다. 백업 위치만 알려 준다. TriggerKeys 와 프로필까지

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "minsoft1115.fcitx",
+  "name": "Hangul / Latin",
+  "version": "1.0.0",
+  "author": "minsoft1115",
+  "description": "fcitx5 hangul vs Latin — taegeuk when hangul is active, A otherwise. Click toggles.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "ImStatus.qml"
+  },
+  "barWidget": {
+    "displayName": "Hangul / Latin",
+    "description": "fcitx5 hangul vs Latin. Click toggles, same as Right Alt.",
+    "category": "Input",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

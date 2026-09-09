@@ -16,9 +16,10 @@
 # reported as "skipped".
 #
 # What install does, in order:
-#   1. npm install -g ccstatusline (skipped when the binary already resolves),
-#      then `mise reshim` so the shim appears on machines where node is
-#      mise-managed — which is every stock Omarchy box
+#   1. the binary — mise use -g npm:ccstatusline@latest when mise is there
+#      (stock Omarchy), otherwise npm install -g. Skipped when the binary
+#      already resolves. Then `mise reshim` so the shim appears. Registration
+#      uses that shim: it survives node version switches.
 #   2. copies the widget config into place
 #   3. registers the binary as Claude Code's statusLine command in
 #      ~/.claude/settings.json (merged with jq — the rest of the file is kept)
@@ -28,11 +29,11 @@
 #   installed copy      ~/.config/ccstatusline/settings.json
 #   registration        ~/.claude/settings.json  (.statusLine key only)
 #
-# The config draws two lines: model / git branch / context gauge on the first,
-# session gauge / 5h-reset countdown / weekly gauge / weekly-reset countdown on
-# the second. ccstatusline re-reads it on every refresh, so config edits apply
-# live; the settings.json registration is only read when a Claude Code session
-# starts.
+# The config draws two lines: model / repo / git branch / context gauge on
+# the first, session gauge / 5h-reset countdown / weekly gauge / weekly-reset
+# countdown on the second. ccstatusline re-reads it on every refresh, so
+# config edits apply live; the settings.json registration is only read when
+# a Claude Code session starts.
 #
 # ccstatusline rewrites the installed copy itself: opening its TUI normalizes
 # the file and update notices add transient keys. The copy then drifts from the
@@ -44,13 +45,14 @@
 # ccstatusline — someone else's status line command is not ours to remove. The
 # installed config is backed up and deleted when it still matches the source
 # (the pre-install state is "no file"); one that differs was tuned by hand or
-# through the TUI, and is left alone with a pointer at the backups. The npm
+# through the TUI, and is left alone with a pointer at the backups. The
 # package serves nothing but this status line, so remove uninstalls it too —
-# --keep-package leaves it.
+# mise unuse if that is how it was installed, npm uninstall -g if it was
+# the old channel, both if both are present. --keep-package leaves it.
 #
-# Dependencies: node/npm (Omarchy manages node through mise) and jq (ships
-# with Omarchy). Both are required, not installed: a box without node is not
-# going to run a node status line well anyway.
+# Dependencies: node (Omarchy manages it through mise) and jq (ships with
+# Omarchy). npm is only needed when mise is missing. A box without node is
+# not going to run a node status line well anyway.
 # ==============================================================================
 set -euo pipefail
 
@@ -68,6 +70,7 @@ DST="$DST_DIR/settings.json"
 CLAUDE_SETTINGS="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
 
 NPM_PKG=ccstatusline
+MISE_SPEC="npm:ccstatusline"
 MISE_SHIM="$HOME/.local/share/mise/shims/ccstatusline"
 KEEP_PACKAGE=0
 
@@ -100,6 +103,28 @@ registered_cmd() {
 
 reshim() { command -v mise >/dev/null 2>&1 && mise reshim >/dev/null 2>&1 || true; }
 
+mise_pkg_installed() {
+  command -v mise >/dev/null 2>&1 || return 1
+  mise where "$MISE_SPEC" >/dev/null 2>&1
+}
+
+npm_pkg_installed() {
+  command -v npm >/dev/null 2>&1 || return 1
+  npm ls -g --depth=0 "$NPM_PKG" >/dev/null 2>&1
+}
+
+package_channel() {
+  local out=""
+  mise_pkg_installed && out="$out mise"
+  npm_pkg_installed && out="$out npm"
+  if [ -n "$out" ]; then
+    printf '%s' "${out# }"
+    return 0
+  fi
+  [ -n "$(resolve_bin || true)" ] && { echo unknown; return 0; }
+  echo missing
+}
+
 # ==============================================================================
 # Actions
 # ==============================================================================
@@ -107,16 +132,27 @@ do_install() {
   [ -f "$SRC" ] || die "source missing: $SRC (run from a clone of the repo)"
   command -v jq >/dev/null 2>&1 || die "jq is required to edit $CLAUDE_SETTINGS"
 
-  # 1. the binary
-  local bin
+  # 1. the binary. mise first (Omarchy), npm -g if mise is missing or failed.
+  local bin got=0
   bin="$(resolve_bin || true)"
   if [ -n "$bin" ]; then
     log "package: $NPM_PKG already installed ($bin) — skipped"
   else
-    command -v npm >/dev/null 2>&1 || die "npm not found — install node first (Omarchy: mise use -g node@lts)"
-    log "package: npm install -g $NPM_PKG"
-    npm install -g "$NPM_PKG" || die "npm install failed"
-    reshim
+    if command -v mise >/dev/null 2>&1; then
+      log "package: mise use -g $MISE_SPEC@latest"
+      if mise use -g --yes "$MISE_SPEC@latest"; then
+        reshim
+        got=1
+      else
+        warn "mise use $MISE_SPEC failed — trying npm"
+      fi
+    fi
+    if [ "$got" = 0 ]; then
+      command -v npm >/dev/null 2>&1 || die "npm not found — install node first (Omarchy: mise use -g node@lts)"
+      log "package: npm install -g $NPM_PKG"
+      npm install -g "$NPM_PKG" || die "npm install failed"
+      reshim
+    fi
     bin="$(resolve_bin || true)"
     [ -n "$bin" ] || die "installed, but no ccstatusline on PATH or in $MISE_SHIM"
   fi
@@ -190,17 +226,29 @@ do_remove() {
     ls -1t "$DST".bak.* 2>/dev/null | head -1 | sed 's/^/      newest backup: /' || true
   fi
 
-  # The package.
+  # The package. Uninstall every channel that has it — a leftover mise copy
+  # after npm uninstall (or the other way around) would still resolve.
   if [ "$KEEP_PACKAGE" = 1 ]; then
     log "package: kept (--keep-package)"
-  elif [ -z "$(resolve_bin || true)" ]; then
-    log "package: not installed — skipped"
-  elif ! command -v npm >/dev/null 2>&1; then
-    warn "npm not found — remove the package yourself: npm uninstall -g $NPM_PKG"
   else
-    log "package: npm uninstall -g $NPM_PKG"
-    npm uninstall -g "$NPM_PKG" || warn "npm uninstall failed — continuing"
-    reshim
+    local dropped=0
+    if mise_pkg_installed; then
+      log "package: mise unuse -g $MISE_SPEC"
+      mise unuse -g --yes "$MISE_SPEC" || warn "mise unuse $MISE_SPEC failed — continuing"
+      dropped=1
+    fi
+    if npm_pkg_installed; then
+      log "package: npm uninstall -g $NPM_PKG"
+      npm uninstall -g "$NPM_PKG" || warn "npm uninstall failed — continuing"
+      dropped=1
+    fi
+    if [ "$dropped" = 1 ]; then
+      reshim
+    elif [ -z "$(resolve_bin || true)" ]; then
+      log "package: not installed — skipped"
+    else
+      warn "package still at $(resolve_bin) — remove it yourself"
+    fi
   fi
 
   log "done. Claude Code sessions already open keep the status line until they restart."
@@ -225,6 +273,7 @@ do_status() {
   echo "installed config   : $DST ($([ -f "$DST" ] && echo present || echo missing))"
   echo "in sync with source: $(in_sync && echo yes || echo no)"
   echo "binary             : ${bin:-missing}"
+  echo "package            : $(package_channel)"
   case "$current" in
     "")             echo "statusLine entry   : not registered" ;;
     *ccstatusline*) echo "statusLine entry   : registered ($current)" ;;

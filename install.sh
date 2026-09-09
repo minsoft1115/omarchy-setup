@@ -67,7 +67,7 @@ have_tty() {
 # reverse order removal uses -- and that is the order that matters. Its --uninit
 # has to run while the snippet loader bash-config owns is still in ~/.bashrc.
 # ==============================================================================
-STEP_NAMES=(korean bash-config lazygit ccstatusline sudo-pop workspaces)
+STEP_NAMES=(korean bash-config lazygit ccstatusline lsp sudo-pop workspaces)
 
 # No commas in these: gum takes the preselected set as one comma-separated
 # string matched against the option text, so a comma inside a label splits it
@@ -78,6 +78,7 @@ step_label() {
     bash-config) echo "Bash config — Alt-R history picker · fzf search and kill · delta diffs" ;;
     lazygit)     echo "Lazygit — delta renders the diffs" ;;
     ccstatusline) echo "Claude status line — context · session/weekly gauges · reset countdowns" ;;
+    lsp)         echo "LSP — language servers · Grok and Claude usable" ;;
     sudo-pop)    echo "sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source" ;;
     workspaces)  echo "Workspaces bar — hold Super to see which apps are where before switching" ;;
   esac
@@ -107,7 +108,7 @@ SUDO_POP_SNIPPET="$BASH_DST/sudo-pop.sh"
 SUDO_POP_REV="${XDG_STATE_HOME:-$HOME/.local/state}/minsoft1115/sudo-pop.rev"
 
 step_state() {
-  local f name rev remote
+  local f name rev remote grok_home
   case "$1" in
     korean)
       [ -f "$FRAG_DIR/korean-input.lua" ] \
@@ -117,6 +118,26 @@ step_state() {
       # comparable; a stale generated file is caught by re-running the step.
       cmp -s "$REPO_DIR/hypr/korean-input.lua" "$FRAG_DIR/korean-input.lua" \
         || { echo "installed / outdated"; return; }
+      if [ -f "$HOME/.config/omarchy/shell.json" ] && [ -d "$REPO_DIR/minsoft1115.fcitx" ]; then
+        [ -f "$HOME/.config/omarchy/plugins/minsoft1115.fcitx/manifest.json" ] \
+          || { echo "installed / outdated"; return; }
+        diff -r -q "$REPO_DIR/minsoft1115.fcitx" "$HOME/.config/omarchy/plugins/minsoft1115.fcitx" >/dev/null 2>&1 \
+          || { echo "installed / outdated"; return; }
+        python3 -c 'import json, pathlib, sys
+p = pathlib.Path.home() / ".config" / "omarchy" / "shell.json"
+try:
+    layout = (json.loads(p.read_text()).get("bar") or {}).get("layout") or {}
+except Exception:
+    sys.exit(1)
+ids = []
+for items in layout.values():
+    if not isinstance(items, list):
+        continue
+    for item in items:
+        ids.append(item.get("id") if isinstance(item, dict) else item)
+sys.exit(0 if "minsoft1115.fcitx" in ids else 1)' \
+          || { echo "installed / outdated"; return; }
+      fi
       ;;
     bash-config)
       grep -qF -e "# minsoft1115-bash:begin" "$HOME/.bashrc" 2>/dev/null \
@@ -151,9 +172,32 @@ step_state() {
       # The binary can live on PATH or behind the mise shim; either counts.
       { command -v ccstatusline >/dev/null 2>&1 || [ -x "$HOME/.local/share/mise/shims/ccstatusline" ]; } \
         && [ -f "$HOME/.config/ccstatusline/settings.json" ] \
-        && grep -qF ccstatusline "$HOME/.claude/settings.json" 2>/dev/null \
+        || { echo "not installed"; return; }
+      # statusLine.command, not a substring anywhere in the file.
+      python3 -c 'import json, pathlib, sys
+p = pathlib.Path.home() / ".claude" / "settings.json"
+try:
+    cmd = (json.loads(p.read_text()).get("statusLine") or {}).get("command") or ""
+except Exception:
+    sys.exit(1)
+sys.exit(0 if "ccstatusline" in cmd else 1)' \
         || { echo "not installed"; return; }
       cmp -s "$REPO_DIR/ccstatusline/settings.json" "$HOME/.config/ccstatusline/settings.json" \
+        || { echo "installed / outdated"; return; }
+      ;;
+    lsp)
+      grok_home="${GROK_HOME:-$HOME/.grok}"
+      [ -f "$grok_home/lsp.json" ] \
+        && [ -x "$HOME/.local/bin/grok" ] \
+        && [ -x "$HOME/.local/bin/claude" ] \
+        || { echo "not installed"; return; }
+      # __HOME__ is expanded per machine, same as korean-bindings.lua.
+      python3 -c 'import os, pathlib, sys
+sys.stdout.write(pathlib.Path(sys.argv[1]).read_text().replace("__HOME__", os.environ["HOME"]))' \
+        "$REPO_DIR/lsp/lsp.json" | cmp -s - "$grok_home/lsp.json" \
+        || { echo "installed / outdated"; return; }
+      grep -Eq '^[[:space:]]*lsp_tools[[:space:]]*=[[:space:]]*true[[:space:]]*$' \
+        "$grok_home/config.toml" 2>/dev/null \
         || { echo "installed / outdated"; return; }
       ;;
     sudo-pop)
@@ -189,6 +233,7 @@ step_cmd() {
     bash-config) echo "scripts/install-bash-config.sh install${GUARDS_FLAG:+ $GUARDS_FLAG}" ;;
     lazygit)     echo "scripts/install-lazygit.sh install" ;;
     ccstatusline) echo "scripts/install-ccstatusline.sh install" ;;
+    lsp)         echo "scripts/install-lsp.sh install" ;;
     sudo-pop)    echo "scripts/install-sudo-pop.sh install" ;;
     workspaces)  echo "scripts/install-workspaces-widget.sh install" ;;
   esac
@@ -205,6 +250,7 @@ step_remove_cmd() {
     bash-config) echo "scripts/install-bash-config.sh remove" ;;
     lazygit)     echo "scripts/install-lazygit.sh remove" ;;
     ccstatusline) echo "scripts/install-ccstatusline.sh remove" ;;
+    lsp)         echo "scripts/install-lsp.sh remove" ;;
     sudo-pop)    echo "scripts/install-sudo-pop.sh remove" ;;
     workspaces)  echo "scripts/install-workspaces-widget.sh remove" ;;
   esac
@@ -298,9 +344,9 @@ done
 if [ "$LIST_ONLY" = 1 ]; then
   # The first column is the name --only takes; without saying so it reads as
   # noise next to the sentence that follows it.
-  printf '%-12s %-22s %s\n' "name" "state" "what it does"
+  printf '%-13s %-22s %s\n' "name" "state" "what it does"
   for name in "${STEP_NAMES[@]}"; do
-    printf '%-12s %-22s %s\n' "$name" "[$(step_state "$name")]" "$(step_label "$name")"
+    printf '%-13s %-22s %s\n' "$name" "[$(step_state "$name")]" "$(step_label "$name")"
   done
   printf '\nuse with: %s --only %s\n' "${SELF##*/}" "$(printf %s "${STEP_NAMES[*]}" | tr ' ' ',')"
   exit 0
