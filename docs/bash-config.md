@@ -102,7 +102,7 @@ Omarchy 가 자기 bash rc 를 읽은 **뒤에** 붙으므로, 같은 이름이�
 `fhistory` 는 "목록 순서는 그대로, 커서만 최적 매치로" 를 fzf 기본 기능으로 한다.
 
 ```bash
-fzf --tac --raw --no-sort --bind 'result:best'
+fzf --tac --raw --gutter-raw ▌ --no-sort --bind 'result:best'
 ```
 
 `--raw` 는 매치되지 않는 줄도 흐리게 **화면에 남기고**, `best` 액션이 그중 최고 점수 항목으로

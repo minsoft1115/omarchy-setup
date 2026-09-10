@@ -15,7 +15,7 @@ fhistory() {
   history > "$tmp"
 
   selected="$(
-    fzf --tac --raw --no-sort \
+    fzf --tac --raw --gutter-raw ▌ --no-sort \
       --query="$READLINE_LINE" \
       --bind 'result:best' \
       --bind "ctrl-y:execute-silent(printf %s {} | sed -E 's/^[[:space:]]*[0-9]+\*?[[:space:]]+//' | wl-copy)" \
