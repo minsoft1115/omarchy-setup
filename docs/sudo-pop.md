@@ -60,16 +60,29 @@ Rust 를 따로 설치하지 않는다. 반면 `cc` 는 없으면 그 자리에�
 설치에 sudo 가 필요한데, 하필 sudo 를 갈아 끼우려는 참에 남의 sudo 를 대신 부를 이유가 없다.
 
 **polkit 에이전트는 한 세션에 하나뿐이다.** Omarchy 셸이 자기 것(`omarchy.polkit`)을 기본으로
-켜 두므로, 그게 켜져 있으면 sudo-pop 에이전트는 **깔리되 enable 되지 않는다** — 그때 팝업은
-sudo 경로에서만 뜨고, run0·디스크 마운트 같은 polkit 프롬프트는 여전히 Omarchy 쪽으로 간다.
-전부 sudo-pop 으로 받으려면 자리를 넘겨야 한다:
+켜 두므로, 그게 켜져 있으면 설치가 **gum 으로 자리를 넘길지 묻는다** (기본은 No). Yes 면
+`omarchy.polkit` 을 끄고 `--init` 이 에이전트를 enable 한다. No 면 유닛은 깔리되 잠든 채로
+남고, 팝업은 sudo 경로에서만 뜬다 — run0·디스크 마운트 같은 polkit 프롬프트는 여전히
+Omarchy 쪽으로 간다. 지문 인증은 Omarchy 에이전트에 있으므로, 넘기면 그 경로는 내준다.
+
+이미 꺼져 있으면 묻지 않고 `--init` 이 바로 자리를 잡는다. 물어볼 터미널이 없으면 끄지
+않는다. `--all` 도 Yes 를 대신 고르지 않는다.
+
+```
+┌ Hand the polkit seat to sudo-pop?
+│ Omarchy's agent (omarchy.polkit) holds it now. …
+│   Yes    No
+```
+
+미리 정하려면 `--take-seat` / `--keep-omarchy-polkit`. 나중에 손으로 넘기려면:
 
 ```bash
 omarchy plugin disable omarchy.polkit
 sudo-pop --init
 ```
 
-`status` 가 지금 어느 상태인지(에이전트가 도는지, omarchy.polkit 이 자리를 쥐고 있는지) 알려준다.
+`status` 가 지금 어느 상태인지(에이전트가 도는지, omarchy.polkit 이 자리를 쥐고 있는지,
+이 설치가 끈 것인지) 알려준다.
 
 ---
 
@@ -88,6 +101,8 @@ sudo-pop --init
 | `--force` | 체크아웃이 이미 설치된 커밋과 같아도 다시 빌드 |
 | `--purge` | `remove` 와 함께 쓰면 소스 clone(빌드 트리 포함)까지 삭제 |
 | `--prefix <경로>` | 바이너리 위치 (기본 `~/.local/bin`) |
+| `--take-seat` | `omarchy.polkit` 을 묻지 않고 끄고 자리를 넘긴다 |
+| `--keep-omarchy-polkit` | 묻지 않고 Omarchy 에이전트를 자리에 둔다 |
 
 ### status 출력 예
 
@@ -119,8 +134,10 @@ build tools        : cc(ok) rust(cargo)
 | `~/.config/systemd/user/sudo-pop-agent.service` | `sudo-pop --init` — polkit 에이전트 (systemd **user** 유닛; 다른 에이전트가 없으면 enable+start) |
 | `$XDG_RUNTIME_DIR/sudo-pop/askpass` | **sudo 경로**에서만 (0700, sudo 가 `-A` 로 exec 하는 심볼릭 링크). run0 경로는 폴킷 헬퍼를 써서 이게 필요 없다 |
 | `~/.local/state/minsoft1115/sudo-pop.rev` | 이 스크립트 — **빌드한 커밋** |
+| `~/.local/state/minsoft1115/sudo-pop.took-seat` | 이 스크립트 — **이 설치가 `omarchy.polkit` 을 끈 기록**. 없으면 사용자가 끈 것이라 `remove` 가 다시 켜지 않는다 |
 
-설정은 전부 sudo-pop 자신이 쓴다. 이 스크립트가 따로 만드는 건 `.rev` 하나뿐이다.
+설정은 전부 sudo-pop 자신이 쓴다. 이 스크립트가 따로 만드는 건 `.rev` 와, 자리를 넘겼을 때만
+`.took-seat` 이다.
 
 ---
 
@@ -180,7 +197,9 @@ build tools        : cc(ok) rust(cargo)
 | `$XDG_RUNTIME_DIR/sudo-pop` | 지운다. 남으면 없는 바이너리를 가리키는 링크가 된다 |
 | `~/.bashrc` 의 로더 블록 | 남긴다 (공유물) |
 
-이 스크립트가 그 뒤에 하는 건 `.rev` 삭제와 clone 처리(`--purge`)뿐이다.
+이 스크립트가 그 뒤에 하는 건 `.rev` 삭제, clone 처리(`--purge`), 그리고 **이 설치가
+`omarchy.polkit` 을 꺼 두었으면 다시 켜는 것**이다. 마커가 없으면 건드리지 않는다 — 사용자가
+직접 끈 자리를 설치가 되살리면 안 된다.
 
 **체크아웃이 없을 때만** 직접 지운다 — clone 을 `--purge` 로 날린 뒤 같은 명령을 또 부른
 경우다. 그때도 순서(`--uninit` → 삭제), 짝 없는 마커, 런타임 링크까지 같은 규칙을 따른다.

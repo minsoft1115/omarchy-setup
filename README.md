@@ -56,6 +56,7 @@ has work to do starts selected.** One failure does not stop the rest.
 | `--all` | everything, without asking |
 | `--only korean,sudo-pop` | by name (the first column of `--list`) |
 | `--guards` / `--no-guards` | answer the `zz-pkg-guards.sh` question in advance |
+| `--take-seat` / `--keep-omarchy-polkit` | answer whether sudo-pop should disable `omarchy.polkit` |
 | `--list` | print what is available and its current state |
 | `--dry-run` | show what would run, run nothing |
 | `--dir <path>` | where to clone |

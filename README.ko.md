@@ -54,6 +54,7 @@ What should be set up? (space toggles, enter confirms)
 | `--all` | 묻지 않고 전부 |
 | `--only korean,sudo-pop` | 이름으로 지정 (`--list` 의 첫 열) |
 | `--guards` / `--no-guards` | `zz-pkg-guards.sh` 답을 미리 정함 |
+| `--take-seat` / `--keep-omarchy-polkit` | sudo-pop 이 `omarchy.polkit` 을 끌지 답을 미리 정함 |
 | `--list` | 설치 가능한 것과 현재 상태만 출력 |
 | `--dry-run` | 무엇이 돌지만 보여 주고 실행 안 함 |
 | `--dir <경로>` | clone 위치 변경 |

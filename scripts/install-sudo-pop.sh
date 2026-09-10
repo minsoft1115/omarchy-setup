@@ -12,6 +12,10 @@
 #   --force         Rebuild even when the checkout is already what is installed
 #   --purge         With remove, delete the source clone as well
 #   --prefix DIR    Where the binary goes (default ~/.local/bin)
+#   --take-seat     Disable omarchy.polkit without asking, so sudo-pop can hold
+#                   the session's polkit seat
+#   --keep-omarchy-polkit
+#                   Leave omarchy.polkit on the seat without asking
 #
 # Every action is idempotent: re-running is safe, and anything already done is
 # reported as "skipped".
@@ -48,6 +52,16 @@
 #
 # The shared snippet loader in ~/.bashrc is left alone either way -- the
 # bash-config step owns it, and other tools sit in the same folder.
+#
+# The polkit seat:
+#   One agent per session. Omarchy's own (omarchy.polkit) is on by default, and
+#   --init will not steal the seat from it -- the unit is installed but stays
+#   dormant, and only the sudo path pops up. Handing the seat over is a real
+#   choice (fingerprint auth goes with Omarchy's agent), so install asks, with
+#   No as the default. Already disabled: no question, --init enables ours.
+#   No terminal to ask at: leave Omarchy on the seat rather than guess.
+#   A marker records when *this* install turned it off, so remove can turn it
+#   back on and a seat the user gave up themselves is left alone.
 # ==============================================================================
 set -euo pipefail
 
@@ -66,6 +80,9 @@ PREFIX="${SUDO_POP_PREFIX:-$HOME/.local/bin}"
 # because it is a record and not something anyone edits.
 STATE_DIR="${STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/minsoft1115}"
 REV_FILE="$STATE_DIR/sudo-pop.rev"
+# Written when this install disables omarchy.polkit, so remove can put it back
+# and a disable the user did themselves is not ours to undo.
+SEAT_FILE="$STATE_DIR/sudo-pop.took-seat"
 
 # What `sudo-pop --init` writes. Only consulted to report state and to clean up
 # after a binary that was deleted before it could --uninit itself.
@@ -82,6 +99,15 @@ HYPR_END="-- sudo-pop:end"
 BIN="$PREFIX/sudo-pop"
 FORCE=0
 PURGE=0
+# yes / no / empty (ask). Set by --take-seat / --keep-omarchy-polkit.
+SEAT_ANSWER=""
+# yes / no / skip. Set by decide_seat before the build, applied just before
+# --init so Omarchy still holds the seat while cargo runs.
+SEAT_DECISION=""
+# 1 when apply_seat actually disabled omarchy.polkit this run — --init must
+# then run even if the config files are already in place, or the unit stays
+# dormant.
+TOOK_SEAT_NOW=0
 
 log()  { printf '\033[1;32m[+]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*"; }
@@ -143,6 +169,113 @@ omarchy_polkit_enabled() {
   fi
 }
 
+have_tty() {
+  { exec 3<>/dev/tty; } 2>/dev/null || return 1
+  exec 3>&-
+}
+
+# Ask whether to disable omarchy.polkit. Default No: this turns off a
+# first-party plugin, and fingerprint auth goes with it.
+ask_take_seat() {
+  local prompt
+  prompt="Hand the polkit seat to sudo-pop?
+
+Omarchy's agent (omarchy.polkit) holds it now. Yes disables it so sudo-pop
+prompts for run0, disk mounts and NetworkManager too. You give up fingerprint
+auth. No leaves Omarchy on the seat; sudo-pop still handles the sudo path."
+
+  if command -v gum >/dev/null 2>&1; then
+    if gum confirm --default=false "$prompt" </dev/tty >/dev/tty 2>&1; then
+      return 0
+    else
+      return 1
+    fi
+  fi
+
+  printf '%s\n[y/N] ' "$prompt" >/dev/tty
+  local reply=""
+  read -r reply </dev/tty
+  case "$reply" in
+    [yY]*) return 0 ;;
+    *)     return 1 ;;
+  esac
+}
+
+# Remember the choice before the build. Disable happens later, in apply_seat,
+# so a long cargo run does not leave the session with no agent.
+decide_seat() {
+  SEAT_DECISION=skip
+  omarchy_polkit_enabled || return 0
+
+  case "$SEAT_ANSWER" in
+    yes)
+      SEAT_DECISION=yes
+      log "will hand the polkit seat to sudo-pop after the build (--take-seat)"
+      return 0
+      ;;
+    no)
+      SEAT_DECISION=no
+      log "leaving omarchy.polkit on the seat (--keep-omarchy-polkit)"
+      return 0
+      ;;
+  esac
+
+  if ! have_tty; then
+    SEAT_DECISION=no
+    warn "omarchy.polkit holds the seat — left it (no terminal to ask; use --take-seat)"
+    return 0
+  fi
+
+  if ask_take_seat; then
+    SEAT_DECISION=yes
+    log "will hand the polkit seat to sudo-pop after the build"
+  else
+    SEAT_DECISION=no
+    log "leaving omarchy.polkit on the seat (sudo-pop still handles the sudo path)"
+  fi
+}
+
+disable_omarchy_polkit() {
+  if ! command -v omarchy-plugin-disable >/dev/null 2>&1; then
+    warn "omarchy-plugin-disable not found — cannot take the seat"
+    return 1
+  fi
+  if omarchy-plugin-disable omarchy.polkit >/dev/null; then
+    log "disabled omarchy.polkit"
+    return 0
+  fi
+  warn "could not disable omarchy.polkit — the agent will stay dormant"
+  return 1
+}
+
+apply_seat() {
+  TOOK_SEAT_NOW=0
+  [ "$SEAT_DECISION" = yes ] || return 0
+  omarchy_polkit_enabled || return 0
+  disable_omarchy_polkit || return 0
+  mkdir -p "$STATE_DIR"
+  printf 'omarchy.polkit\n' >"$SEAT_FILE"
+  TOOK_SEAT_NOW=1
+}
+
+# Undo a disable this install recorded. A seat the user gave up themselves
+# has no marker and is left alone.
+restore_omarchy_polkit_if_we_took_it() {
+  [ -f "$SEAT_FILE" ] || return 0
+  if omarchy_polkit_enabled; then
+    log "omarchy.polkit is already enabled — left as it is"
+  elif command -v omarchy-plugin-enable >/dev/null 2>&1; then
+    if omarchy-plugin-enable omarchy.polkit >/dev/null; then
+      log "re-enabled omarchy.polkit (this install had disabled it)"
+    else
+      warn "could not re-enable omarchy.polkit — run: omarchy plugin enable omarchy.polkit"
+    fi
+  else
+    warn "omarchy-plugin-enable not found — run: omarchy plugin enable omarchy.polkit"
+  fi
+  rm -f "$SEAT_FILE"
+}
+
 # Commit currently checked out, and the one the installed binary came from.
 local_rev()  { have_clone && git -C "$SRC_DIR" rev-parse HEAD 2>/dev/null || true; }
 built_rev()  { [ -f "$REV_FILE" ] && cat "$REV_FILE" 2>/dev/null || true; }
@@ -192,6 +325,9 @@ run_upstream_install() {
 # ==============================================================================
 do_install() {
   require_toolchain
+  # Ask now, disable later: a first build takes minutes, and the session
+  # should keep Omarchy's agent until --init is ready to take over.
+  decide_seat
   sync_clone
 
   local head built
@@ -202,12 +338,18 @@ do_install() {
     log "sudo-pop $(short "$head") is already installed — skipping the build"
     # The binary can be current while its config is not: --init writes into
     # ~/.config, and a bash-config remove or a hand-edited hyprland.lua takes
-    # part of it away without the binary noticing.
-    if conf_present && hypr_block_present; then
-      log "shell alias and window rules already in place — skipped"
-    else
+    # part of it away without the binary noticing. Taking the seat this run
+    # also needs --init, even when the files are already there — that is
+    # what enables the unit once omarchy.polkit is out of the way.
+    apply_seat
+    if ! conf_present || ! hypr_block_present; then
       log "re-running sudo-pop --init (some of what it writes is missing)"
       "$BIN" --init
+    elif [ "$TOOK_SEAT_NOW" = 1 ]; then
+      log "re-running sudo-pop --init so the agent can take the seat"
+      "$BIN" --init
+    else
+      log "shell alias and window rules already in place — skipped"
     fi
   else
     if installed && [ -n "$built" ]; then
@@ -218,6 +360,14 @@ do_install() {
     mkdir -p "$STATE_DIR"
     printf '%s\n' "$head" >"$REV_FILE"
     log "recorded the built commit: $(short "$head") -> $REV_FILE"
+    # Upstream --init ran while omarchy.polkit may still have held the seat,
+    # so the unit is installed but dormant. Disable, then --init again to
+    # enable it. Harmless when the answer was no: apply_seat is a no-op.
+    apply_seat
+    if [ "$TOOK_SEAT_NOW" = 1 ]; then
+      log "re-running sudo-pop --init so the agent can take the seat"
+      "$BIN" --init
+    fi
   fi
 
   on_path || warn "$PREFIX is not on PATH — the sudo alias will not resolve"
@@ -316,6 +466,7 @@ do_remove() {
     remove_by_hand
   fi
 
+  restore_omarchy_polkit_if_we_took_it
   [ -f "$REV_FILE" ] && { rm -f "$REV_FILE"; log "deleted: $REV_FILE"; }
   rmdir "$STATE_DIR" 2>/dev/null || true
 
@@ -374,6 +525,8 @@ $(hypr_block_present && echo ', required by hyprland.lua' || echo ', NOT require
   if command -v omarchy-plugin-list >/dev/null 2>&1; then
     if omarchy_polkit_enabled; then
       row "omarchy.polkit" "enabled — it holds the polkit seat, so the agent stays dormant"
+    elif [ -f "$SEAT_FILE" ]; then
+      row "omarchy.polkit" "disabled by this install — the sudo-pop agent can hold the seat"
     else
       row "omarchy.polkit" "disabled — the sudo-pop agent can hold the seat"
     fi
@@ -392,6 +545,8 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --force)        FORCE=1 ;;
     --purge)        PURGE=1 ;;
+    --take-seat)    SEAT_ANSWER=yes ;;
+    --keep-omarchy-polkit) SEAT_ANSWER=no ;;
     --prefix)       shift; PREFIX="${1:?--prefix needs a directory}"; BIN="$PREFIX/sudo-pop" ;;
     --prefix=*)     PREFIX="${1#*=}"; BIN="$PREFIX/sudo-pop" ;;
     --help|-h|help) usage; exit 0 ;;

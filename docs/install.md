@@ -126,6 +126,24 @@ What should be set up? (space toggles, enter confirms)
 비대화형으로 돌리거나 미리 정해 두려면 `--guards` / `--no-guards` 를 쓴다. 빼는 것도
 그쪽이다 (`--only bash-config --no-guards`).
 
+### polkit 자리도 그 단계가 스스로 묻는다
+
+[`sudo-pop`](sudo-pop.md) 은 체크리스트에 한 줄이지만, Omarchy 기본 에이전트(`omarchy.polkit`)를
+끌지는 **그 스텝이 도는 중에** 물어본다. 켜져 있을 때만, 기본은 No. 지문 인증이 그 에이전트에
+있고, `--all` 이 그걸 대신 Yes 로 고르면 안 된다.
+
+```
+== sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source ==
+┌ Hand the polkit seat to sudo-pop?
+│ Omarchy's agent (omarchy.polkit) holds it now. Yes disables it so sudo-pop
+│ prompts for run0, disk mounts and NetworkManager too. You give up fingerprint
+│ auth. No leaves Omarchy on the seat; sudo-pop still handles the sudo path.
+│   Yes    No
+```
+
+이미 꺼져 있으면 묻지 않는다. 물어볼 터미널이 없으면 끄지 않는다. 미리 정하려면
+`--take-seat` / `--keep-omarchy-polkit`. 이 설치가 끈 경우에만 `remove` 가 다시 켠다.
+
 ---
 
 ## 옵션
@@ -135,6 +153,7 @@ What should be set up? (space toggles, enter confirms)
 | `--all` | 묻지 않고 전부 |
 | `--only korean,sudo-pop` | 이름으로 지정 (`--list` 의 첫 열) |
 | `--guards` / `--no-guards` | `zz-pkg-guards.sh` 답을 미리 정함 |
+| `--take-seat` / `--keep-omarchy-polkit` | sudo-pop 이 `omarchy.polkit` 을 끌지 답을 미리 정함 |
 | `--list` | 설치 가능한 것과 현재 상태만 출력 |
 | `--dry-run` | 무엇이 돌지만 보여 주고 실행 안 함 |
 | `--remove` | 되돌리기 (아래) |
@@ -144,7 +163,7 @@ What should be set up? (space toggles, enter confirms)
 ```bash
 ./install.sh --list
 ./install.sh --only workspaces
-./install.sh --all --no-guards
+./install.sh --all --no-guards --keep-omarchy-polkit
 ```
 
 `--list` 의 첫 열이 `--only` 에 넘기는 이름이다.

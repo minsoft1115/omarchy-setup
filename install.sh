@@ -18,6 +18,12 @@
 #                      Answer the bash step's optional zz-pkg-guards.sh question
 #                      in advance. Without either, that step asks for itself -- and
 #                      only when the file is not already installed
+#   --take-seat / --keep-omarchy-polkit
+#                      Answer the sudo-pop step's omarchy.polkit question in
+#                      advance. Without either, that step asks for itself -- and
+#                      only when omarchy.polkit is currently enabled. --all does
+#                      not pick Yes: disabling a first-party plugin is not
+#                      implied by installing everything
 #   --dir <path>       Where the repo lives (default ~/.local/share/minsoft1115/omarchy-setup)
 #   --dry-run          Show what would run, run nothing
 #   --purge            With --remove, delete the clone as the very last step
@@ -234,7 +240,7 @@ step_cmd() {
     lazygit)     echo "scripts/install-lazygit.sh install" ;;
     ccstatusline) echo "scripts/install-ccstatusline.sh install" ;;
     lsp)         echo "scripts/install-lsp.sh install" ;;
-    sudo-pop)    echo "scripts/install-sudo-pop.sh install" ;;
+    sudo-pop)    echo "scripts/install-sudo-pop.sh install${SEAT_FLAG:+ $SEAT_FLAG}" ;;
     workspaces)  echo "scripts/install-workspaces-widget.sh install" ;;
   esac
 }
@@ -303,6 +309,7 @@ bootstrap() {
 SELECT_ALL=0
 ONLY=""
 GUARDS_FLAG=""
+SEAT_FLAG=""
 LIST_ONLY=0
 DRY_RUN=0
 REMOVE=0
@@ -314,7 +321,7 @@ usage() {
   if [ -n "$SELF" ] && [ -f "$SELF" ]; then
     awk 'NR<3{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$SELF"
   else
-    echo "usage: install.sh [--all] [--only a,b] [--guards|--no-guards] [--list] [--dry-run] [--remove [--purge]] [--dir <path>]"
+    echo "usage: install.sh [--all] [--only a,b] [--guards|--no-guards] [--take-seat|--keep-omarchy-polkit] [--list] [--dry-run] [--remove [--purge]] [--dir <path>]"
     echo "the full help is in the script header — run --help from a clone"
   fi
 }
@@ -327,6 +334,8 @@ while [ "$#" -gt 0 ]; do
     --only=*)      ONLY="${1#*=}" ;;
     --guards)      GUARDS_FLAG="--with-optional" ;;
     --no-guards)   GUARDS_FLAG="--no-optional" ;;
+    --take-seat)   SEAT_FLAG="--take-seat" ;;
+    --keep-omarchy-polkit) SEAT_FLAG="--keep-omarchy-polkit" ;;
     --dir)         shift; CLONE_DIR="${1:-$CLONE_DIR}" ;;
     --dir=*)       CLONE_DIR="${1#*=}" ;;
     --list)        LIST_ONLY=1 ;;
