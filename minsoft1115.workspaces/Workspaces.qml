@@ -14,6 +14,7 @@ import Quickshell.Hyprland
 import qs.Commons
 import qs.Ui
 import "PeekModel.js" as PeekModel
+import "PeekRegistry.js" as PeekRegistry
 
 BarWidget {
   id: root
@@ -45,8 +46,13 @@ BarWidget {
   // ---- Super-hold peek (driven by PeekService) -------------------------
   // The service owns the GlobalShortcut and calls these on every live widget
   // instance; each instance decides whether the overlay belongs on its screen.
+  // Instances register in PeekRegistry so the service does not have to ask the
+  // host bar for them.
   property bool peekOpen: false
   property var peekModel: []
+
+  Component.onCompleted: PeekRegistry.register(root)
+  Component.onDestruction: PeekRegistry.unregister(root)
 
   // Which screen this bar surface is on. QsWindow is the attached property the
   // rest of the shell uses for the same question (PopupCard.qml, Bar.qml).

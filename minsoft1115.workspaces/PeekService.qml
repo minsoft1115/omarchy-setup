@@ -11,6 +11,7 @@
 // The shell injects `shell` and `manifest` (shell.qml, ensureService).
 import QtQuick
 import Quickshell.Hyprland
+import "PeekRegistry.js" as PeekRegistry
 
 Item {
   id: root
@@ -48,12 +49,11 @@ Item {
   property int armedWorkspaceId: -1
   property string armedToplevelAddress: ""
 
-  // Live widget instances of this plugin, one per monitor. Keyed by the bar
-  // layout entry id, which is the plugin id — not the widget's moduleName,
-  // which deliberately stays "omarchy.workspaces" for IPC routing.
+  // Live widget instances of this plugin, one per monitor. They register in
+  // PeekRegistry.js; the host bar is not asked. Third-party shell.bar has no
+  // moduleWidgets (Omarchy 4.0.3 sandbox).
   function widgets() {
-    if (!shell || !shell.bar || typeof shell.bar.moduleWidgets !== "function" || !pluginId) return []
-    return shell.bar.moduleWidgets(pluginId)
+    return PeekRegistry.all()
   }
 
   function callAll(method) {
