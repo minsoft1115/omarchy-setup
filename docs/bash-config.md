@@ -259,7 +259,7 @@ command pacman -Syu      # 가드 없이 pacman
 열면 된다.
 
 `~/.config/minsoft1115/` 상위 폴더는 남긴다. 다른 것도 같은 네임스페이스를 쓴다
-([Hyprland 조각](setup-korean.md)이 그렇다).
+([워크스페이스 Hyprland 조각](workspaces-widget.md)이 그렇다).
 
 ### 설치 폴더는 우리 것만이 아니다
 

@@ -13,13 +13,13 @@ are backed up as `*.bak.<timestamp>` before they are touched.
 install.sh                 entry point — clone + pick what to install
 scripts/                   the individual installers
 minsoft1115.workspaces/    Quickshell plugin source (bar widget + shell service)
-minsoft1115.fcitx/         Quickshell plugin source (hangul/Latin bar icon)
 hypr/                      Hyprland Lua snippets (installed to ~/.config/minsoft1115/hypr/)
 bash/                      alias and function sources (installed to ~/.config/minsoft1115/bash/)
 lazygit/                   lazygit config (installed to ~/.config/lazygit/)
 ccstatusline/              Claude Code status line config (installed to ~/.config/ccstatusline/)
 lsp/                       Grok lsp.json (installed to ~/.grok/lsp.json)
 docs/                      per-script documentation and research notes (Korean)
+old/korean/                archived Korean input setup (replaced by Omarchy support)
 ```
 
 ---
@@ -39,8 +39,7 @@ A `gum` checklist appears (space toggles, enter confirms):
 
 ```
 What should be set up? (space toggles, enter confirms)
-> [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
-  [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+> [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
   [✓] [not installed]        Lazygit — delta renders the diffs
   [✓] [not installed]        Claude status line — context · session/weekly gauges · reset countdowns
   [✓] [not installed]        LSP — language servers · Grok and Claude usable
@@ -54,7 +53,7 @@ has work to do starts selected.** One failure does not stop the rest.
 | Option | |
 |---|---|
 | `--all` | everything, without asking |
-| `--only korean,sudo-pop` | by name (the first column of `--list`) |
+| `--only bash-config,sudo-pop` | by name (the first column of `--list`) |
 | `--guards` / `--no-guards` | answer the `zz-pkg-guards.sh` question in advance |
 | `--take-seat` / `--keep-omarchy-polkit` | answer whether sudo-pop should disable `omarchy.polkit` |
 | `--list` | print what is available and its current state |
@@ -74,12 +73,11 @@ states, what the checkboxes mean, and how removing differs.
 
 # What gets installed
 
-Seven things. Each is its own script and can be run on its own; what it touches,
+Six things. Each is its own script and can be run on its own; what it touches,
 how it works and what can be tuned is in the linked document.
 
 | | | |
 |---|---|---|
-| **Korean input** | right Alt toggles 한/영 · `Control+space` freed for tmux's prefix · the Super+Space menu opens in Latin · taegeuk / A on the right of the bar | `setup-korean.sh` · [docs](docs/setup-korean.md) |
 | **Bash config** | Alt-R history picker · fzf search and kill · delta diffs · markdown through glow · optional guards that ask before `pacman` or `yay` runs | `install-bash-config.sh` · [docs](docs/bash-config.md) |
 | **Lazygit** | diffs rendered through delta · installs lazygit itself if missing | `install-lazygit.sh` · [docs](docs/lazygit.md) |
 | **Claude status line** | [ccstatusline](https://github.com/sirmalloc/ccstatusline) under the Claude Code prompt, two lines: model · repo · git branch · context gauge, then session/weekly usage gauges with reset countdowns · installs the package (mise, or npm if mise is missing) and registers it in `~/.claude/settings.json` | `install-ccstatusline.sh` · [docs](docs/ccstatusline.md) |
@@ -101,6 +99,37 @@ They run from inside the repo, because they install *from* it. Most take
 `status` (the default), `install` and `remove`; `--help` on any of them says the
 rest. If you have run `install.sh` once, the clone is already at
 `~/.local/share/minsoft1115/omarchy-setup`.
+
+---
+
+## Korean input
+
+Use Omarchy's built-in support (verified with 4.5rc3). With the interface in
+English, add Hangul under **Setup > Typing > Input Methods**, or run:
+
+```bash
+omarchy setup input hangul
+```
+
+For Right Alt as 한/영 and Right Ctrl as 한자, select **Korean** under
+**Setup > Typing > Keyboard Layouts** (`kr:kr104`). These typing settings keep
+the interface language unchanged; `omarchy language ko` also changes the UI
+language and locale.
+
+The previous installer, Lua snippets, bar widget and documentation are preserved
+in [old/korean/](old/korean/README.md). They are excluded from `install.sh`,
+including `--all` and `--remove`. Existing installed settings are not removed
+automatically.
+
+To clean up settings installed by this repository, use the
+[standalone uninstaller](docs/uninstall-korean.md):
+
+```bash
+./scripts/uninstall-korean.sh --dry-run
+./scripts/uninstall-korean.sh
+```
+
+It keeps the fcitx5 profile, switching keys, packages and official keyboard settings.
 
 ---
 

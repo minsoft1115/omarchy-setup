@@ -6,7 +6,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/minsoft1115/omarchy-setup/main/install.sh | bash
 #   ./install.sh                 Pick from a checklist (everything preselected)
 #   ./install.sh --all           Run everything, no questions
-#   ./install.sh --only korean,bash-config
+#   ./install.sh --only bash-config,lazygit
 #   ./install.sh --remove        Take things back out (nothing preselected)
 #   ./install.sh --list          Show what is available and its current state
 #   ./install.sh --help          This help
@@ -30,8 +30,7 @@
 #
 # Removing runs the steps in reverse and starts with nothing selected: an
 # install picked wrong is fixed by running it again, an uninstall picked wrong
-# is not. What each step takes back out is its own business -- the Korean one
-# deliberately leaves the fcitx5 config it edited alone; see its --help.
+# is not. What each step takes back out is documented in its own --help.
 #
 # The clone is kept, not thrown away. Every script here installs *from* the
 # repo: the bash aliases, the widget source, and the Hyprland fragments all have
@@ -73,14 +72,13 @@ have_tty() {
 # reverse order removal uses -- and that is the order that matters. Its --uninit
 # has to run while the snippet loader bash-config owns is still in ~/.bashrc.
 # ==============================================================================
-STEP_NAMES=(korean bash-config lazygit ccstatusline lsp sudo-pop workspaces)
+STEP_NAMES=(bash-config lazygit ccstatusline lsp sudo-pop workspaces)
 
 # No commas in these: gum takes the preselected set as one comma-separated
 # string matched against the option text, so a comma inside a label splits it
 # and the match silently fails.
 step_label() {
   case "$1" in
-    korean)      echo "Korean input — right Alt for 한/영 · Omarchy menu opens in Latin" ;;
     bash-config) echo "Bash config — Alt-R history picker · fzf search and kill · delta diffs" ;;
     lazygit)     echo "Lazygit — delta renders the diffs" ;;
     ccstatusline) echo "Claude status line — context · session/weekly gauges · reset countdowns" ;;
@@ -116,35 +114,6 @@ SUDO_POP_REV="${XDG_STATE_HOME:-$HOME/.local/state}/minsoft1115/sudo-pop.rev"
 step_state() {
   local f name rev remote grok_home
   case "$1" in
-    korean)
-      [ -f "$FRAG_DIR/korean-input.lua" ] \
-        && grep -qF -e "-- setup-korean:begin" "$HOME/.config/hypr/hyprland.lua" 2>/dev/null \
-        || { echo "not installed"; return; }
-      # korean-bindings.lua is generated per machine, so only the copied one is
-      # comparable; a stale generated file is caught by re-running the step.
-      cmp -s "$REPO_DIR/hypr/korean-input.lua" "$FRAG_DIR/korean-input.lua" \
-        || { echo "installed / outdated"; return; }
-      if [ -f "$HOME/.config/omarchy/shell.json" ] && [ -d "$REPO_DIR/minsoft1115.fcitx" ]; then
-        [ -f "$HOME/.config/omarchy/plugins/minsoft1115.fcitx/manifest.json" ] \
-          || { echo "installed / outdated"; return; }
-        diff -r -q "$REPO_DIR/minsoft1115.fcitx" "$HOME/.config/omarchy/plugins/minsoft1115.fcitx" >/dev/null 2>&1 \
-          || { echo "installed / outdated"; return; }
-        python3 -c 'import json, pathlib, sys
-p = pathlib.Path.home() / ".config" / "omarchy" / "shell.json"
-try:
-    layout = (json.loads(p.read_text()).get("bar") or {}).get("layout") or {}
-except Exception:
-    sys.exit(1)
-ids = []
-for items in layout.values():
-    if not isinstance(items, list):
-        continue
-    for item in items:
-        ids.append(item.get("id") if isinstance(item, dict) else item)
-sys.exit(0 if "minsoft1115.fcitx" in ids else 1)' \
-          || { echo "installed / outdated"; return; }
-      fi
-      ;;
     bash-config)
       grep -qF -e "# minsoft1115-bash:begin" "$HOME/.bashrc" 2>/dev/null \
         || { echo "not installed"; return; }
@@ -197,7 +166,7 @@ sys.exit(0 if "ccstatusline" in cmd else 1)' \
         && [ -x "$HOME/.local/bin/grok" ] \
         && [ -x "$HOME/.local/bin/claude" ] \
         || { echo "not installed"; return; }
-      # __HOME__ is expanded per machine, same as korean-bindings.lua.
+      # __HOME__ is expanded per machine before comparing with the source.
       python3 -c 'import os, pathlib, sys
 sys.stdout.write(pathlib.Path(sys.argv[1]).read_text().replace("__HOME__", os.environ["HOME"]))' \
         "$REPO_DIR/lsp/lsp.json" | cmp -s - "$grok_home/lsp.json" \
@@ -235,7 +204,6 @@ sys.stdout.write(pathlib.Path(sys.argv[1]).read_text().replace("__HOME__", os.en
 # definition means the dry run cannot drift from what actually happens.
 step_cmd() {
   case "$1" in
-    korean)      echo "scripts/setup-korean.sh" ;;
     bash-config) echo "scripts/install-bash-config.sh install${GUARDS_FLAG:+ $GUARDS_FLAG}" ;;
     lazygit)     echo "scripts/install-lazygit.sh install" ;;
     ccstatusline) echo "scripts/install-ccstatusline.sh install" ;;
@@ -252,7 +220,6 @@ step_run() {
 
 step_remove_cmd() {
   case "$1" in
-    korean)      echo "scripts/setup-korean.sh remove" ;;
     bash-config) echo "scripts/install-bash-config.sh remove" ;;
     lazygit)     echo "scripts/install-lazygit.sh remove" ;;
     ccstatusline) echo "scripts/install-ccstatusline.sh remove" ;;

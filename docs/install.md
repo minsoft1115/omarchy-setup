@@ -3,7 +3,8 @@
 > [omarchy-setup](../README.ko.md) 의 진입점. 개별 스크립트는 `scripts/` 에 있다.
 
 clone 부터 선택 설치까지 한 번에 한다. 개별 스크립트를 직접 돌려도 되고, 이건 그것들을
-묶어 주는 얇은 층이다.
+묶어 주는 얇은 층이다. 한글 입력은 [Omarchy 공식 기능](../README.ko.md#한글-입력)을
+사용하며, 이전 구현은 [old/korean/](../old/korean/README.md) 에 보관한다.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/minsoft1115/omarchy-setup/main/install.sh | bash
@@ -39,8 +40,7 @@ curl | bash
 
 ```
 What should be set up? (space toggles, enter confirms)
-> [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
-  [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+> [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
   [✓] [not installed]        Lazygit — delta renders the diffs
   [✓] [not installed]        Claude status line — context · session/weekly gauges · reset countdowns
   [✓] [not installed]        LSP — language servers · Grok and Claude usable
@@ -66,7 +66,6 @@ What should be set up? (space toggles, enter confirms)
 
   | 스텝 | 설치 여부 판단 | 최신 여부 비교 대상 |
   |---|---|---|
-  | `korean` | 조각 파일 + `hyprland.lua` 의 마커. Omarchy 면 한/영 바 위젯도 바에 있어야 함 | `hypr/korean-input.lua` + `minsoft1115.fcitx/` |
   | `bash-config` | `~/.bashrc` 의 마커 | `bash/*.sh` 전부 (설치본에 없는 파일도 차이로 본다) |
   | `lazygit` | `~/.config/lazygit/config.yml` 이 비어 있지 않음 — Omarchy 가 빈 파일로 깔아 두므로 | `lazygit/config.yml` |
   | `ccstatusline` | 바이너리(PATH 또는 mise shim) + 설정 파일 + `statusLine.command` 가 ccstatusline | `ccstatusline/settings.json` |
@@ -82,9 +81,6 @@ What should be set up? (space toggles, enter confirms)
   — 손으로 깔았거나 upstream 설치기로 깔았으면 — `outdated` 다. 네트워크가 없으면 `latest`
   로 본다: 모르는 것을 추측해서 몇 분짜리 빌드를 권하지 않는다.
 
-  `korean-bindings.lua` 는 머신마다 생성되는 파일이라 비교에서 뺀다 — 명령 문자열이 Omarchy
-  기본값에서 나오므로 저장소 쪽에 대응하는 원본이 없다. 스텝을 다시 돌리면 어차피 다시 만든다.
-
   선택 파일이 빠져 있는 것은 **차이가 아니라 선택**이라, `bash-config` 는 `zz-pkg-guards.sh` 가
   없다고 `installed / outdated` 가 되지 않는다.
 
@@ -97,7 +93,7 @@ What should be set up? (space toggles, enter confirms)
   상태를 `installed, latest` 가 아니라 `installed / latest` 로 쓰는 이유다
 - 상태 칸은 **고정 폭으로 정렬**한다. 가운뎃점(`·`) 같은 멀티바이트 문자를 쓰면 `printf` 가
   바이트로 세어 한 칸씩 어긋나므로, 구분자는 ASCII 로 둔다
-- 고른 순서와 무관하게 **실행 순서는 고정**이다: 한글 → bash → lazygit → ccstatusline → lsp → sudo-pop → 위젯.
+- 고른 순서와 무관하게 **실행 순서는 고정**이다: bash → lazygit → ccstatusline → lsp → sudo-pop → 위젯.
   위젯이 `omarchy restart shell` 로 바를 재시작하므로 마지막이다.
   sudo-pop 이 bash 뒤인 것은 **제거가 역순**이기 때문이다 — `sudo-pop --uninit` 은 bash 단계가
   깐 로더가 `~/.bashrc` 에 아직 있을 때 돌아야 한다
@@ -106,7 +102,7 @@ What should be set up? (space toggles, enter confirms)
   곳에서 동의를 넘겨짚지 않는다. 그런 환경에서는 `--all` 이나 `--only` 로 명시해야 한다
 
 ```
-[x] no terminal to ask at — say what you want with --all or --only korean,bash-config,lazygit,ccstatusline,lsp,sudo-pop,workspaces
+[x] no terminal to ask at — say what you want with --all or --only bash-config,lazygit,ccstatusline,lsp,sudo-pop,workspaces
 ```
 
 ### 선택 파일은 그 단계가 스스로 묻는다
@@ -151,7 +147,7 @@ What should be set up? (space toggles, enter confirms)
 | 옵션 | 하는 일 |
 |---|---|
 | `--all` | 묻지 않고 전부 |
-| `--only korean,sudo-pop` | 이름으로 지정 (`--list` 의 첫 열) |
+| `--only bash-config,sudo-pop` | 이름으로 지정 (`--list` 의 첫 열) |
 | `--guards` / `--no-guards` | `zz-pkg-guards.sh` 답을 미리 정함 |
 | `--take-seat` / `--keep-omarchy-polkit` | sudo-pop 이 `omarchy.polkit` 을 끌지 답을 미리 정함 |
 | `--list` | 설치 가능한 것과 현재 상태만 출력 |
@@ -171,7 +167,6 @@ What should be set up? (space toggles, enter confirms)
 ```
 $ ./install.sh --list
 name          state          what it does
-korean        [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
 bash-config   [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
 lazygit       [installed / latest]   Lazygit — delta renders the diffs
 ccstatusline  [installed / latest]   Claude status line — context · session/weekly gauges · reset countdowns
@@ -179,7 +174,7 @@ lsp           [installed / latest]   LSP — language servers · Grok and Claude
 sudo-pop      [installed / latest]   sudo-pop — privileged password prompts in a popup · polkit agent + sudo router · built from source
 workspaces    [installed / latest]   Workspaces bar — hold Super to see which apps are where before switching
 
-use with: install.sh --only korean,bash-config,lazygit,ccstatusline,lsp,sudo-pop,workspaces
+use with: install.sh --only bash-config,lazygit,ccstatusline,lsp,sudo-pop,workspaces
 ```
 
 ---
@@ -192,13 +187,14 @@ use with: install.sh --only korean,bash-config,lazygit,ccstatusline,lsp,sudo-pop
 
 - 같은 체크리스트가 **전부 해제된 상태**로 뜬다. 설치는 잘못 골라도 다시 돌리면 되지만
   제거는 아니다
-- **설치의 역순**으로 진행한다 (위젯 → sudo-pop → lsp → ccstatusline → lazygit → bash → 한글). sudo-pop 의 `--uninit` 이
+- **설치의 역순**으로 진행한다 (위젯 → sudo-pop → lsp → ccstatusline → lazygit → bash). sudo-pop 의 `--uninit` 이
   bash 로더보다 먼저 도는 것이 이 순서의 요점이다
 - 끝나면 `~/.config/minsoft1115/` 가 비었을 때 정리한다
 - 물어볼 터미널이 없으면 **거부한다** (설치와 같다)
 
-무엇을 지우는지는 각 스크립트가 정한다. 특히 한글 쪽은 **fcitx5 설정을 일부러 남긴다** —
-[docs/setup-korean.md](setup-korean.md) 참고.
+무엇을 지우는지는 각 스크립트가 정한다. 이전 한글 설치 단계는
+[old/korean/](../old/korean/README.md) 로 보관했고, 현재 설치·제거 목록에는 없다.
+기존 한글 입력 설정은 자동으로 제거하지 않는다.
 
 `--purge` 는 clone 까지 지운다. 실행 중인 스크립트 파일을 지우면 bash 가 나머지를 못 읽으므로,
 `exec` 로 프로세스를 갈아탄 뒤 지운다.
@@ -231,7 +227,6 @@ use with: install.sh --only korean,bash-config,lazygit,ccstatusline,lsp,sudo-pop
 
 ```
 == Summary ==
-  korean ok
   bash-config FAILED
   sudo-pop ok
   workspaces ok

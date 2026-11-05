@@ -1,6 +1,7 @@
 # setup-korean.sh
 
-> [omarchy-setup](../README.ko.md) 의 스크립트 중 하나.
+> 보관 문서: [이전 한글 입력 설정](../README.md). 아래 사용법과 동작은 이전 구현을 설명한다.
+> 현재 설치는 [Omarchy 공식 기능](../../../README.ko.md#한글-입력)을 사용한다. 경로 예시는 `old/korean/` 기준이다.
 
 한글 입력(fcitx5 + hangul)을 한 번에 세팅한다. 갓 설치한 머신에서 실행하면 패키지 설치부터
 키 재바인딩까지 끝나고, 이미 구성된 머신에서는 `--light` 로 키 설정만 다시 입힐 수 있다.
@@ -35,14 +36,13 @@
 
 ## 설치
 
-여러 스크립트를 한 번에 돌리려면 [`install.sh`](install.md) 를 쓰면 된다. 이 스크립트만
-쓰려면 아래처럼 한다.
+이 스크립트는 현재 `install.sh` 에서 제외되었다. 아래는 보관된 이전 실행 방법이다.
 
 ### 1. clone 해서 실행 (권장)
 
 ```bash
 git clone https://github.com/minsoft1115/omarchy-setup.git
-cd omarchy-setup
+cd omarchy-setup/old/korean
 ./scripts/setup-korean.sh
 ```
 

@@ -12,13 +12,13 @@
 install.sh                 진입점 — clone + 선택 설치
 scripts/                   개별 설치 스크립트
 minsoft1115.workspaces/    Quickshell 플러그인 소스 (바 위젯 + 셸 서비스)
-minsoft1115.fcitx/         Quickshell 플러그인 소스 (한/영 바 아이콘)
 hypr/                      Hyprland Lua 조각 (설치 시 ~/.config/minsoft1115/hypr/ 로)
 bash/                      alias·function 소스 (설치 시 ~/.config/minsoft1115/bash/ 로)
 lazygit/                   lazygit 설정 (설치 시 ~/.config/lazygit/ 로)
 ccstatusline/              Claude Code status line 설정 (설치 시 ~/.config/ccstatusline/ 로)
 lsp/                       Grok lsp.json (설치 시 ~/.grok/lsp.json 으로)
 docs/                      스크립트 문서와 조사 기록
+old/korean/                이전 한글 입력 설정 (Omarchy 공식 지원으로 대체)
 ```
 
 ---
@@ -37,8 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/minsoft1115/omarchy-setup/main/inst
 
 ```
 What should be set up? (space toggles, enter confirms)
-> [ ] [installed / latest]   Korean input — right Alt for 한/영 · Omarchy menu opens in Latin
-  [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
+> [✓] [installed / outdated] Bash config — Alt-R history picker · fzf search and kill · delta diffs
   [✓] [not installed]        Lazygit — delta renders the diffs
   [✓] [not installed]        Claude status line — context · session/weekly gauges · reset countdowns
   [✓] [not installed]        LSP — language servers · Grok and Claude usable
@@ -52,7 +51,7 @@ What should be set up? (space toggles, enter confirms)
 | 옵션 | 하는 일 |
 |---|---|
 | `--all` | 묻지 않고 전부 |
-| `--only korean,sudo-pop` | 이름으로 지정 (`--list` 의 첫 열) |
+| `--only bash-config,sudo-pop` | 이름으로 지정 (`--list` 의 첫 열) |
 | `--guards` / `--no-guards` | `zz-pkg-guards.sh` 답을 미리 정함 |
 | `--take-seat` / `--keep-omarchy-polkit` | sudo-pop 이 `omarchy.polkit` 을 끌지 답을 미리 정함 |
 | `--list` | 설치 가능한 것과 현재 상태만 출력 |
@@ -71,12 +70,11 @@ clone 은 `~/.local/share/minsoft1115/omarchy-setup` 에 남는다. 스크립트
 
 # 무엇이 설치되나
 
-일곱 가지다. 각각 독립된 스크립트라 하나만 돌려도 되고, 무엇을 건드리는지·어떻게 도는지·
+여섯 가지다. 각각 독립된 스크립트라 하나만 돌려도 되고, 무엇을 건드리는지·어떻게 도는지·
 어디를 고칠 수 있는지는 옆의 문서에 있다.
 
 | | | |
 |---|---|---|
-| **한글 입력** | 오른쪽 Alt 로 한/영 · tmux 와 겹치던 `Control+space` 해제 · Super+Space 메뉴가 영문으로 열림 · 바 오른쪽에 태극/A | `setup-korean.sh` · [문서](docs/setup-korean.md) |
 | **Bash 설정** | Alt-R 히스토리 피커 · fzf 검색과 종료 · delta diff · markdown 은 glow 로 · `pacman`·`yay` 를 실행하기 전에 묻는 선택 가드 | `install-bash-config.sh` · [문서](docs/bash-config.md) |
 | **Lazygit** | lazygit 안의 diff 를 delta 로 렌더 · lazygit 이 없으면 함께 설치 | `install-lazygit.sh` · [문서](docs/lazygit.md) |
 | **Claude status line** | Claude Code 입력창 아래에 [ccstatusline](https://github.com/sirmalloc/ccstatusline) 두 줄 — 모델 · 레포 · git 브랜치 · context 게이지, 그리고 세션/주간 사용량 게이지와 리셋 카운트다운 · 패키지 설치(mise, 없으면 npm)와 `~/.claude/settings.json` 등록까지 한다 | `install-ccstatusline.sh` · [문서](docs/ccstatusline.md) |
@@ -97,6 +95,35 @@ cd omarchy-setup
 저장소 안에서 실행한다 — 소스를 저장소에서 읽어 설치하기 때문이다. 대부분 `status`(기본),
 `install`, `remove` 를 받고, 나머지는 각자의 `--help` 가 알려 준다. `install.sh` 를 이미 한 번
 돌렸다면 clone 이 `~/.local/share/minsoft1115/omarchy-setup` 에 있다.
+
+---
+
+## 한글 입력
+
+Omarchy 공식 기능을 사용한다 (4.5rc3 기준 확인). 영문 화면을 유지하면서
+**Setup > Typing > Input Methods** 에서 Hangul 을 추가하거나 다음을 실행한다.
+
+```bash
+omarchy setup input hangul
+```
+
+오른쪽 Alt 를 한/영, 오른쪽 Ctrl 을 한자키로 쓰려면
+**Setup > Typing > Keyboard Layouts** 에서 **Korean** (`kr:kr104`) 을 선택한다.
+이 입력 설정은 화면 언어를 바꾸지 않는다. `omarchy language ko` 는 화면 언어와
+로케일까지 한국어로 바꾸는 별도 명령이다.
+
+기존 설치 스크립트·Lua 조각·바 위젯·문서는 [old/korean/](old/korean/README.md) 에
+보관한다. `install.sh` 의 `--all`·`--remove` 를 포함한 설치·제거 대상에서 제외했으며,
+기존 시스템에 적용된 설정을 자동으로 제거하지 않는다.
+
+이전에 이 저장소로 설치한 설정만 정리하려면 [별도 제거 스크립트](docs/uninstall-korean.md)를 쓴다.
+
+```bash
+./scripts/uninstall-korean.sh --dry-run
+./scripts/uninstall-korean.sh
+```
+
+fcitx5 프로필·전환키·패키지와 공식 키보드 설정은 유지한다.
 
 ---
 
